@@ -22,12 +22,13 @@ namespace chip8 {
             Emulator(const std::vector<uint8_t> &code) : Emulator() { load_code(code); }
 
             void load_code(const std::vector<uint8_t> &code);
+            int run(void);
+            int run_debug(void);
             int step(void);
 
             void show_mem(void) const;
             void show_regs(void) const;
             void show_current_instruction(void) const;
-            void show_display(void) const { display.draw(); }
 
         private: 
             // Registers and stack:
@@ -38,6 +39,7 @@ namespace chip8 {
             // Memory and display:
             uint8_t mem[4096] = {0};
             Display display;
+            bool draw_flag = false;
 
             void set_flag(void)   { v[0xF] = 1; }
             void clear_flag(void) { v[0xF] = 0; }

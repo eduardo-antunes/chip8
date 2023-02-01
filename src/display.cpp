@@ -6,19 +6,68 @@
  */
 
 #include <cstdint>
+#include <cstring>
 #include <iostream>
+#include <SDL.h>
 
 #include "display.hpp"
 
 using namespace chip8;
 
-// I have yet to make this graphical
-void Display::draw(void) const {
-    for(int y = 0; y < height(); ++y) {
-        for(int x = 0; x < width(); ++x) {
-            char rep = get(x, y) ? '@' : '_';
-            std::cout << rep;
-        }
-        std::cout << std::endl;
+Display::Display(void) {
+    // Initialize SDL
+    if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+        std::cerr << "Could not initialize SDL. Error: " 
+            << SDL_GetError() << std::endl;
+        SDL_Quit();
+        throw std::exception();
     }
+    // Create a window
+    window = SDL_CreateWindow("Chip-8 emulator", 
+            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
+            width * 10, height * 10, SDL_WINDOW_SHOWN);
+    if(window == NULL) {
+        std::cerr << "Could not create window. Error: " 
+            << SDL_GetError() << std::endl;
+        SDL_Quit();
+        throw std::exception();
+
+    }
+    // Create a renderer for the window
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if(renderer == NULL) {
+        std::cerr << "Could not create renderer. Error: " 
+            << SDL_GetError() << std::endl;
+        SDL_Quit();
+        throw std::exception();
+    }
+    SDL_RenderSetLogicalSize(renderer, width * 10, height * 10);
+    // Create a texture
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, 
+            SDL_TEXTUREACCESS_STREAMING, width, height);
+    if(texture == NULL) {
+        std::cerr << "Could not create texture. Error: " 
+            << SDL_GetError() << std::endl;
+        SDL_Quit();
+        throw std::exception();
+    }
+}
+
+void Display::draw(void) const {
+    int pitch = 0;
+    uint32_t *locked_pixels = NULL;
+    SDL_LockTexture(texture, NULL, reinterpret_cast<void**>(&locked_pixels), &pitch);
+    memcpy(locked_pixels, pixels, width * height * sizeof(uint32_t));
+    SDL_UnlockTexture(texture);
+
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+}
+
+Display::~Display(void) {
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }

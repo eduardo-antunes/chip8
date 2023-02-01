@@ -32,36 +32,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "Usage: " << argv[0] << " <rom-file>" << std::endl;
         return 1;
     }
-    char debug_inst;
     auto bin = read_file(argv[1]);
     chip8::Emulator chip8_emu(bin);
-    while(true) {
-        std::cin >> debug_inst;
-        switch(debug_inst) {
-            case 'd':
-                chip8_emu.show_display();
-                break;
-            case 'i':
-                std::cout << "Next instruction: ";
-                chip8_emu.show_current_instruction();
-                break;
-            case 'm':
-                chip8_emu.show_mem();
-                break;
-            case 'n':
-                std::cout << "Just executed: ";
-                chip8_emu.show_current_instruction();
-                chip8_emu.step();
-                break;
-            case 'r':
-                chip8_emu.show_regs();
-                break;
-            case 'q':
-                std::cout << "Exiting..." << std::endl;
-                return 0;
-            default:
-                std::cout << "Please input a debug instruction" << std::endl;
-        }
-    }
-    return 0;
+    int status = chip8_emu.run();
+    return status;
 }

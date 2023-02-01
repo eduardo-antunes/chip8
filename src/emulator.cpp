@@ -49,6 +49,59 @@ void Emulator::load_code(const std::vector<uint8_t> &rom) {
     }
 }
 
+int Emulator::run(void) {
+    display.draw();
+    bool running = true;
+    while(running) {
+        int status = step();
+        if(status != 0) return status;
+        if(draw_flag) {
+            draw_flag = false;
+            display.draw();
+        }
+    }
+    return 0;
+}
+
+int Emulator::run_debug(void) {
+    display.draw();
+    int status = 0;
+    char debug_inst;
+    bool running = true;
+    while(running) {
+        std::cin >> debug_inst;
+        switch(debug_inst) {
+            case 'i':
+                std::cout << "Next instruction: ";
+                show_current_instruction();
+                break;
+            case 'm':
+                show_mem();
+                break;
+            case 'n':
+                std::cout << "Just executed: ";
+                show_current_instruction();
+                status = step();
+                if(status != 0) 
+                    return status;
+                if(draw_flag) {
+                    draw_flag = false;
+                    display.draw();
+                }
+                break;
+            case 'r':
+                show_regs();
+                break;
+            case 'q':
+                std::cout << "Exiting..." << std::endl;
+                return 0;
+            default:
+                std::cout << "Please input a debug instruction" << std::endl;
+        }
+    }
+    return 0;
+}
+
 // Join two bytes into a single 16-bit value
 #define JOIN_BYTES(b1, b2) (((b1) << 8) | b2)
 
@@ -96,8 +149,8 @@ int Emulator::step(void) {
             // specified by the index register, to the position (V[X], V[Y]) of
             // the display, setting a flag if any pixel is erased during this
             clear_flag();
-            uint8_t x_pos = v[x] & (display.width() - 1);  // % display.width()
-            uint8_t y_pos = v[y] & (display.height() - 1); // % display.height()
+            uint8_t x_pos = v[x] & (display.width - 1);  // % display.width()
+            uint8_t y_pos = v[y] & (display.height - 1); // % display.height()
 
             // Sprites are stored in memory as a series of bytes, where each
             // byte represents the operations that must be done to draw a line
@@ -111,7 +164,7 @@ int Emulator::step(void) {
                 for(int j = 0; j < 8; ++j) {
                     int pixel = GET_BIT(line, j);
                     if(pixel) {
-                        if(display.get(x_pos, y_pos)) {
+                        if(display.is_on(x_pos, y_pos)) {
                             display.erase(x_pos, y_pos);
                             set_flag();
                         } else {
@@ -119,16 +172,17 @@ int Emulator::step(void) {
                         }
                     }
                     ++x_pos;
-                    if(x_pos >= display.width()) break;
+                    if(x_pos >= display.width) break;
                 }
                 ++y_pos;
-                if(y_pos >= display.height()) break;
-                x_pos = v[x] & (display.width() - 1); // reset x position
+                if(y_pos >= display.height) break;
+                x_pos = v[x] & (display.width - 1); // reset x position
             }
+            draw_flag = true; // refresh graphics
             break;
         }
         default:
-            std::fprintf(stderr, "Unrecognized instruction: %04X\n", inst);
+            fprintf(stderr, "Unrecognized instruction: %04X\n", inst);
             return 1;
     }
     return 0;
@@ -142,25 +196,25 @@ int Emulator::step(void) {
 void Emulator::show_mem(void) const {
     // had to resort to printf a bit
     for(int i = 0; i < 256; ++i) {
-        std::printf("%03X\t", i * 16);
+        printf("%03X\t", i * 16);
         for(int j = 0; j < 16; ++j) {
             int n = static_cast<int>(mem[i*16 + j]);
-            std::printf("%02X ", n);
+            printf("%02X ", n);
         }
         std::cout << std::endl;
     }
 }
 
 void Emulator::show_regs(void) const {
-    std::printf("PC = %04X\n", pc);
+    printf("PC = %04X\n", pc);
     for(int i = 0; i < 16; ++i)
-        std::printf("V%X = %d\n", i, v[i]);
+        printf("V%X = %d\n", i, v[i]);
     std::cout << "I = " << index_reg << std::endl;
 }
 
 void Emulator::show_current_instruction(void) const {
     uint16_t opcode = JOIN_BYTES(mem[pc], mem[pc + 1]);
-    std::printf("%04X\n", opcode);
+    printf("%04X\n", opcode);
 }
 
 #undef JOIN_BYTES
