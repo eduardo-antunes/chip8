@@ -50,21 +50,18 @@ void Emulator::load_code(const std::vector<uint8_t> &rom) {
 }
 
 int Emulator::run(void) {
-    display.draw();
+    io.display.draw();
     bool running = true;
     while(running) {
         int status = step();
         if(status != 0) return status;
-        if(draw_flag) {
-            draw_flag = false;
-            display.draw();
-        }
+        io.update_display();
     }
     return 0;
 }
 
 int Emulator::run_debug(void) {
-    display.draw();
+    io.display.draw();
     int status = 0;
     char debug_inst;
     bool running = true;
@@ -84,10 +81,6 @@ int Emulator::run_debug(void) {
                 status = step();
                 if(status != 0) 
                     return status;
-                if(draw_flag) {
-                    draw_flag = false;
-                    display.draw();
-                }
                 break;
             case 'r':
                 show_regs();
@@ -98,6 +91,7 @@ int Emulator::run_debug(void) {
             default:
                 std::cout << "Please input a debug instruction" << std::endl;
         }
+        io.update_display();
     }
     return 0;
 }
@@ -124,33 +118,124 @@ int Emulator::step(void) {
     // Decode and execute the instruction
     switch(op) {
         case 0:
-            // 0x00E0: clear the display
-            if(inst == 0x00E0)
-                display.clear();
+            if(inst == 0x00E0) {
+                // 0x00E0: clear the display
+                io.display.clear();
+            } else if(inst == 0x00EE) {
+                // 0x00EE: return from subroutine
+                pc = stack.back();
+                stack.pop_back();
+            }
             break;
         case 1:
             // 0x1NNN: unconditional jump to NNN
             pc = nnn;
+            break;
+        case 2:
+            // 0x2NNN: jump to subroutine
+            stack.push_back(pc);
+            pc = nnn;
+            break;
+        case 3:
+            // 0x3XNN: skip next instruction if V[X] == NN
+            if(v[x] == nn) pc += 2;
+            break;
+        case 4:
+            // 0x4XNN: skip next instruction if V[X] != NN
+            if(v[x] != nn) pc += 2;
+            break;
+        case 5:
+            // 0x5XY0: skip next instruction if V[X] == V[Y]
+            if(n == 0 && v[x] == v[y]) pc += 2;
             break;
         case 6:
             // 0x6XNN: set register V[X] to NN
             v[x] = nn;
             break;
         case 7:
-            // 0x7XNN: add NN to register V[X], without setting any flags
+            // 0x7XNN: add NN to register V[X], don't change flag
             v[x] += nn;
+            break;
+        case 8:
+            // Arithmetic and logic instructions
+            switch(n) {
+                case 0:
+                    // 0x8XY0: set V[X] to V[Y]
+                    v[x] = v[y];
+                    break;
+                case 1:
+                    // 0x8XY1: set V[X] to V[X] | V[Y]
+                    v[x] |= v[y];
+                    break;
+                case 2:
+                    // 0x8XY2: set V[X] to V[X] & V[Y]
+                    v[x] &= v[y];
+                    break;
+                case 3:
+                    // 0x8XY3: set V[x] to V[X] ^ V[Y]
+                    v[x] ^= v[y];
+                    break;
+                case 4:
+                    // 0x8XY4: add V[Y] to V[X], set flag on overflow
+                    if(v[x] == 255) set_flag();
+                    else clear_flag();
+                    v[x] += v[y];
+                    break;
+                case 5:
+                    // 0x8XY5: subtract V[Y] from V[X], clear flag on borrow
+                    if(v[x] >= v[y]) set_flag();
+                    else clear_flag();
+                    v[x] -= v[y];
+                    break;
+                case 6:
+                    // 0x8XY6: bitwise shift V[X] to the right, set flag to bit
+                    // that was shifted out. NOTE: this instruction behaves
+                    // differently in different variants of chip-8; here we
+                    // adopt the chip-48 behavior instead of the original
+                    if(v[x] & 1) set_flag();
+                    else clear_flag();
+                    v[x] >>= 1;
+                    break;
+                case 7:
+                    // 0x8XY7: subtract V[X] from V[Y], clear flag on borrow
+                    if(v[y] >= v[x]) set_flag();
+                    else clear_flag();
+                    v[y] -= v[x];
+                    break;
+                case 14:
+                    // 0x8XYE: bitwise shift V[X] to the left, set flag to bit
+                    // that was shifted out. NOTE: this instruction behaves
+                    // differently in different variants of chip-8; here we
+                    // adopt the chip-48 behavior instead of the original
+                    if(v[x] & 128) set_flag();
+                    else clear_flag();
+                    v[x] >>= 1;
+                    break;
+                default:
+                    std::cerr << "Unrecognized instruction" << std::endl;
+            }
+            break;
+        case 9:
+            // 0x9XY0: skip next instruction if V[X] != V[Y]
+            if(n == 0 && v[x] != v[y]) pc += 2;
             break;
         case 10:
             // 0xANNN: set index register to NNN
             index_reg = nnn;
+            break;
+        case 11:
+            // 0xBNNN: jump with offset. NOTE: this instruction is different in
+            // different versions of chip-8; here, we adopt the original chip-8
+            // instruction, which jumps to NNN + V[0]
+            pc = nnn + v[0];
             break;
         case 13: {
             // 0xDXYN: draw N pixels tall sprite, found at the memory address
             // specified by the index register, to the position (V[X], V[Y]) of
             // the display, setting a flag if any pixel is erased during this
             clear_flag();
-            uint8_t x_pos = v[x] & (display.width - 1);  // % display.width()
-            uint8_t y_pos = v[y] & (display.height - 1); // % display.height()
+            uint8_t x_pos = v[x] & (io.display.width - 1);  // % width
+            uint8_t y_pos = v[y] & (io.display.height - 1); // % height
 
             // Sprites are stored in memory as a series of bytes, where each
             // byte represents the operations that must be done to draw a line
@@ -164,21 +249,21 @@ int Emulator::step(void) {
                 for(int j = 0; j < 8; ++j) {
                     int pixel = GET_BIT(line, j);
                     if(pixel) {
-                        if(display.is_on(x_pos, y_pos)) {
-                            display.erase(x_pos, y_pos);
+                        if(io.display.is_on(x_pos, y_pos)) {
+                            io.display.erase(x_pos, y_pos);
                             set_flag();
                         } else {
-                            display.fill(x_pos, y_pos);
+                            io.display.fill(x_pos, y_pos);
                         }
                     }
                     ++x_pos;
-                    if(x_pos >= display.width) break;
+                    if(x_pos >= io.display.width) break;
                 }
                 ++y_pos;
-                if(y_pos >= display.height) break;
-                x_pos = v[x] & (display.width - 1); // reset x position
+                if(y_pos >= io.display.height) break;
+                x_pos = v[x] & (io.display.width - 1); // reset x position
             }
-            draw_flag = true; // refresh graphics
+            io.set_draw_flag(); // refresh graphics
             break;
         }
         default:
@@ -194,7 +279,6 @@ int Emulator::step(void) {
 // Debugging functions
 
 void Emulator::show_mem(void) const {
-    // had to resort to printf a bit
     for(int i = 0; i < 256; ++i) {
         printf("%03X\t", i * 16);
         for(int j = 0; j < 16; ++j) {

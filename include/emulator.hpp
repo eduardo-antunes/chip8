@@ -12,39 +12,35 @@
 #include <cstring>
 #include <vector>
 
-#include "display.hpp"
+#include "io_handler.hpp"
 
 namespace chip8 {
-
     class Emulator {
         public:
-            Emulator(void);
+            Emulator();
             Emulator(const std::vector<uint8_t> &code) : Emulator() { load_code(code); }
-
             void load_code(const std::vector<uint8_t> &code);
-            int run(void);
-            int run_debug(void);
-            int step(void);
 
-            void show_mem(void) const;
-            void show_regs(void) const;
-            void show_current_instruction(void) const;
+            int step();
+            int run();
+            int run_debug();
+            void show_mem() const;
+            void show_regs() const;
+            void show_current_instruction() const;
 
         private: 
-            // Registers and stack:
+            // CPU state:
+            uint8_t mem[4096] = {0};
             uint16_t pc, index_reg;
             uint8_t v[16], delay_timer = 0, sound_timer = 0;
             std::vector<uint16_t> stack;
 
-            // Memory and display:
-            uint8_t mem[4096] = {0};
-            Display display;
-            bool draw_flag = false;
+            void set_flag()   { v[0xF] = 1; }
+            void clear_flag() { v[0xF] = 0; }
 
-            void set_flag(void)   { v[0xF] = 1; }
-            void clear_flag(void) { v[0xF] = 0; }
+            // Input and output:
+            IO_handler io;
     };
-
 }
 
 #endif // CHIP8_EMULATOR_HPP

@@ -5,20 +5,19 @@
  * present and future rights to this software under copyright law.
  */
 
-#ifndef CHIP8_INTERFACE_HPP
-#define CHIP8_INTERFACE_HPP
+#ifndef CHIP8_DISPLAY_HPP
+#define CHIP8_DISPLAY_HPP
 
 #include <cstdint>
 #include <cstring>
 #include <SDL.h>
 
 namespace chip8 {
-
     class Display {
         public:
             static const int width = 64, height = 32;
 
-            Display(void);
+            Display();
 
             int is_on(int x, int y) const { return pixels[64 * y + x] == on ? 1 : 0; }
 
@@ -26,21 +25,19 @@ namespace chip8 {
 
             void erase(int x, int y) { pixels[64 * y + x] = off; }
 
-            void clear(void) { SDL_RenderClear(renderer); }
+            void clear() { SDL_RenderClear(renderer); }
 
-            void draw(void) const;
+            void draw() const;
 
-            ~Display(void);
+            ~Display();
 
         private:
             static const uint32_t on = 0xFFFFFFFF, off = 0xFF000000;
             uint32_t pixels[width * height] = {0};
-
             SDL_Window   *window   = NULL;
             SDL_Renderer *renderer = NULL;
             SDL_Texture  *texture  = NULL;
     };
-
 }
 
-#endif // CHIP8_INTERFACE_HPP
+#endif // CHIP8_DISPLAY_HPP
