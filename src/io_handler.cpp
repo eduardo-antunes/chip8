@@ -20,11 +20,6 @@ Io_handler::Io_handler() {
     }
 }
 
-uint8_t Io_handler::get_key() {
-    key_flag = false;
-    return key_value;
-}
-
 Io_event Io_handler::poll_event() {
     SDL_Event event;
     if(!SDL_PollEvent(&event)) {

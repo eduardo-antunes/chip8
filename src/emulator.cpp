@@ -33,9 +33,9 @@ Emulator::Emulator() {
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
-    // load font into the address range 0x50 - 0x9F
+    // load font into the correct addres range
     for(uint16_t i = 0; i < 80; ++i)
-        memory[i + 0x50] = font[i];
+        memory[i + font_addr] = font[i];
 }
 
 void Emulator::load_code(const std::vector<uint8_t> &code) {
@@ -90,7 +90,6 @@ int Emulator::single_step() {
             if(inst == 0x00E0) {
                 // 0x00E0: clear the display
                 io.screen.clear();
-                io.screen.request_update();
             } else if(inst == 0x00EE) {
                 // 0x00EE: return from subroutine
                 pc = stack.back();
@@ -107,7 +106,7 @@ int Emulator::single_step() {
             pc = nnn;
             break;
         case 3:
-            // 0x3XNN: skip next instruction if V[X] == N
+            // 0x3XNN: skip next instruction if V[X] == NN
             if(v[x] == nn) pc += 2;
             break;
         case 4:
@@ -127,7 +126,7 @@ int Emulator::single_step() {
             v[x] += nn;
             break;
         case 8:
-            // Arithmetic and logic instructions
+            // Arithmetic and logical instructions
             switch(n) {
                 case 0:
                     // 0x8XY0: set V[X] to V[Y]
@@ -174,7 +173,7 @@ int Emulator::single_step() {
                     // differently in different variants of chip-8; here we
                     // adopt the chip-48 behavior instead of the original
                     set_flag(v[x] & 128);
-                    v[x] >>= 1;
+                    v[x] <<= 1;
                     break;
                 default:
                     std::cerr << "Unrecognized instruction" << std::endl;
@@ -254,10 +253,58 @@ int Emulator::single_step() {
             }
         case 15:
             switch(nn) {
+                case 0x07:
+                    // 0xFX07: set V[X] to the value of the delay timer
+                    v[x] = delay_timer;
+                    break;
                 case 0x0A:
                     // 0xFX0A: when a key is pressed, put its value in V[X]
                     if(io.key_pressed()) v[x] = io.get_key();
                     else pc -= 2;
+                    break;
+                case 0x15:
+                    // 0xFX15: set the delay timer to the value of V[X]
+                    delay_timer = v[x];
+                    break;
+                case 0x18:
+                    // 0xFX18: set the sound timer to the value of V[X]
+                    sound_timer = v[x];
+                    break;
+                case 0x1E:
+                    // 0xFX1E: add V[X] to the index register
+                    index_reg += v[x];
+                    set_flag(index_reg >= 0x1000);
+                case 0x29:
+                    // 0xFX29: set the index register to the address of the
+                    // hexadecimal character specified by V[X] in the builtin
+                    // font. Following the behavior of the original chip-8, we
+                    // consider just the last nibble of V[X]
+                    index_reg += font_addr + GET_NIB(v[x], 1);
+                    break;
+                case 0x33: 
+                    // 0xFX33: convert the value of V[X] into BCD and store the
+                    // result into the address specified by the index register
+                    memory[index_reg] = v[x] / 100;            // hundred's place
+                    memory[index_reg + 1] = (v[x] % 100) / 10; // ten's place
+                    memory[index_reg + 2] = v[x] % 10;         // one's place
+                    break;
+                case 0x55:
+                    // 0xFX55: store the values of the registers from V[0] to
+                    // V[X], inclusive, into memory starting from the address
+                    // specified by the index register. NOTE: this instruction
+                    // behaves differently in different versions of chip-8.
+                    // Here we adopt the chip-48 behavior, which does not
+                    // change the value of the index register in its operation
+                    for(uint8_t i = 0; i <= x; ++i)
+                        memory[index_reg + i] = v[i];
+                    break;
+                case 0x65:
+                    // 0xFX65: it does the opposite of 0xFX55, and it's subject
+                    // to the same differences of behavior in different 
+                    // versions of chip-8. Here we again adopt the chip-48
+                    // behavior, for consistency
+                    for(uint8_t i = 0; i <= x; ++i)
+                        v[i] = memory[index_reg + i];
                     break;
             }
         default:

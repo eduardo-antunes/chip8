@@ -25,7 +25,7 @@ namespace chip8 {
 
             Io_handler();
             bool key_pressed() { return key_flag; }
-            uint8_t get_key();
+            uint8_t get_key() { return key_value; }
             Io_event poll_event();
             ~Io_handler();
         private:

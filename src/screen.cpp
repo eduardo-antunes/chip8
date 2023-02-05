@@ -41,6 +41,11 @@ Screen::Screen() {
     }
 }
 
+void Screen::clear() {
+    draw_flag = true;
+    memset(pixels, 0, width * height * sizeof(uint32_t));
+}
+
 void Screen::update() {
     if(draw_flag) {
         draw_flag = false;

@@ -25,7 +25,7 @@ namespace chip8 {
 
             void erase(int x, int y) { pixels[width * y + x] = off; }
 
-            void clear() { memset(pixels, 0, width * height * sizeof(uint32_t)); }
+            void clear();
 
             void request_update() { draw_flag = true; }
 

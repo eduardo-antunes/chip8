@@ -22,9 +22,11 @@ namespace chip8 {
             void load_code(const std::vector<uint8_t> &code);
             int run();
         private:
+            // font is in the address range 0x50 - 0x9F
+            static const uint16_t font_addr = 0x50;
             // CPU state:
             uint8_t memory[4096] = {0}, v[16] = {0};
-            uint8_t delay_timer = 0, sounde_timer = 0;
+            uint8_t delay_timer = 0, sound_timer = 0;
             uint16_t pc, index_reg;
             std::vector<uint16_t> stack;
 
