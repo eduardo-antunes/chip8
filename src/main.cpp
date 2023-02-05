@@ -34,6 +34,6 @@ int main(int argc, char *argv[]) {
     }
     auto bin = read_file(argv[1]);
     chip8::Emulator chip8_emu(bin);
-    int status = chip8_emu.run();
-    return status;
+    chip8_emu.run();
+    return 0;
 }
