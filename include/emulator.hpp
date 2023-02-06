@@ -10,7 +10,8 @@
 
 #include <cstdint>
 #include <vector>
-#include "io_handler.hpp"
+#include "screen.hpp"
+#include "keypad.hpp"
 
 // The real meat of the emulator
 
@@ -34,7 +35,8 @@ namespace chip8 {
             int single_step();
 
             // Input and output:
-            Io_handler io;
+            Screen screen;
+            Keypad keys;
     };
 }
 

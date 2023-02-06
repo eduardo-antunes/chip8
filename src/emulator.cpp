@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include "screen.hpp"
 #include "emulator.hpp"
 
 using namespace chip8;
@@ -48,21 +49,21 @@ void Emulator::load_code(const std::vector<uint8_t> &code) {
 }
 
 int Emulator::run() {
-    Io_event event;
+    int status = 0;
     bool quit = false;
-    io.screen.request_update(); // to show the screen from the begginning
-    srand(time(NULL));
+    srand(time(NULL)); // seed RNG
+    screen.request_update(); // to show the screen from the begginning
     while(!quit) {
-        do {
-            event = io.poll_event();
-            if(event == Io_event::QUIT)
-                quit = true;
-        } while(event != Io_event::NONE);
-        int err = single_step();
-        if(err) quit = true;
-        io.screen.update();
+        // Process user input
+        quit = keys.detect();
+        if(quit) break;
+        // Run a single instruction
+        status = single_step();
+        if(status != 0) quit = true;
+        // Refresh graphics
+        screen.update();
     }
-    return 0;
+    return status;
 }
 
 // Join two bytes into a single 16-bit value
@@ -89,7 +90,7 @@ int Emulator::single_step() {
         case 0:
             if(inst == 0x00E0) {
                 // 0x00E0: clear the display
-                io.screen.clear();
+                screen.clear();
             } else if(inst == 0x00EE) {
                 // 0x00EE: return from subroutine
                 pc = stack.back();
@@ -202,8 +203,8 @@ int Emulator::single_step() {
             // specified by the index register, to the position (V[X], V[Y]) of
             // the display, setting a flag if any pixel is erased during this
             set_flag(0);
-            uint8_t x_pos = v[x] & (io.screen.width - 1);
-            uint8_t y_pos = v[y] & (io.screen.height - 1);
+            uint8_t x_pos = v[x] & (screen.width - 1);
+            uint8_t y_pos = v[y] & (screen.height - 1);
 
             // Sprites are stored in memory as a series of bytes, where each
             // byte represents the operations that must be done to draw a line
@@ -217,23 +218,23 @@ int Emulator::single_step() {
                 for(int j = 0; j < 8; ++j) {
                     int pixel = GET_BIT(line, j);
                     if(pixel) {
-                        if(io.screen.is_on(x_pos, y_pos)) {
-                            io.screen.erase(x_pos, y_pos);
+                        if(screen.is_on(x_pos, y_pos)) {
+                            screen.erase(x_pos, y_pos);
                             set_flag(1);
                         } else {
-                            io.screen.fill(x_pos, y_pos);
+                            screen.fill(x_pos, y_pos);
                         }
                     }
                     ++x_pos;
                     // don't wrap around the edge of the screen
-                    if(x_pos >= io.screen.width) break;
+                    if(x_pos >= screen.width) break;
                 }
                 ++y_pos;
                 // don't wrap around the edge of the screen
-                if(y_pos >= io.screen.height) break;
-                x_pos = v[x] & (io.screen.width - 1); // reset x position
+                if(y_pos >= screen.height) break;
+                x_pos = v[x] & (screen.width - 1); // reset x position
             }
-            io.screen.request_update(); // refresh graphics
+            screen.request_update(); // refresh graphics
             break;
         }
         case 14:
@@ -241,16 +242,17 @@ int Emulator::single_step() {
                 case 0x9E:
                     // 0xEX9E: skip next instruction if the key specified by
                     // V[X] is being pressed
-                    if(io.key_pressed() && io.get_key() == v[x])
+                    if(keys.is_pressed(v[x]))
                         pc += 2;
                     break;
                 case 0xA1:
                     // 0xEXA1: skip next instruction if the key specified by
                     // V[X] is not being pressed
-                    if(!io.key_pressed() || io.get_key() != v[x])
+                    if(!keys.is_pressed(v[x]))
                         pc += 2;
                     break;
             }
+            break;
         case 15:
             switch(nn) {
                 case 0x07:
@@ -259,7 +261,7 @@ int Emulator::single_step() {
                     break;
                 case 0x0A:
                     // 0xFX0A: when a key is pressed, put its value in V[X]
-                    if(io.key_pressed()) v[x] = io.get_key();
+                    if(keys.any_pressed()) v[x] = keys.get_pressed();
                     else pc -= 2;
                     break;
                 case 0x15:
@@ -307,10 +309,14 @@ int Emulator::single_step() {
                         v[i] = memory[index_reg + i];
                     break;
             }
+            break;
         default:
-            std::cerr << "Unrecognized instruction: " << inst << std::endl;
+            fprintf(stderr, "Unrecognized instruction: %4X\n", inst);
             return 1;
     }
+    // Update the CPU timers
+    if(delay_timer > 0) --delay_timer;
+    if(sound_timer > 0) --sound_timer; // TODO play sound
     return 0;
 }
 

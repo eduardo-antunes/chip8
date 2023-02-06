@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <SDL2/SDL.h>
 
 #include "emulator.hpp"
 
@@ -32,8 +33,14 @@ int main(int argc, char *argv[]) {
         std::cerr << "Usage: " << argv[0] << " <rom-file>" << std::endl;
         return 1;
     }
+    if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
+        std::cerr << "Could not initialize SDL" << std::endl;
+        std::cerr << "Error: " << SDL_GetError() << std::endl;
+        return 2;
+    }
     auto bin = read_file(argv[1]);
     chip8::Emulator chip8_emu(bin);
     chip8_emu.run();
+    SDL_Quit();
     return 0;
 }
