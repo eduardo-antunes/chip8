@@ -10,7 +10,7 @@
 
 using namespace chip8;
 
-int Keypad::detect() {
+int Keypad::handle() {
     SDL_Event event;
     while(SDL_PollEvent(&event)) {
         switch(event.type) {
@@ -63,13 +63,13 @@ int Keypad::detect() {
     return 0; // no need to quit
 }
 
-bool Keypad::any_pressed() {
+bool Keypad::any_pressed() const {
     for(auto key_pressed : keypad)
         if(key_pressed) return true;
     return false;
 }
 
-uint8_t Keypad::get_pressed() {
+uint8_t Keypad::get_key() const {
     for(int key = 0; key <= 0xF; ++key) {
         if(keypad[key])
             return key;

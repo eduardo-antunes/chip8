@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
+#include "timer.hpp"
 #include "screen.hpp"
 #include "emulator.hpp"
 
@@ -48,23 +49,36 @@ void Emulator::load_code(const std::vector<uint8_t> &code) {
     }
 }
 
+#define SECS_PER_CYCLE 0.002
+
 int Emulator::run() {
     int status = 0;
     bool quit = false;
     srand(time(NULL)); // seed RNG
     screen.request_update(); // to show the screen from the begginning
+    double lag = 0;
+    Timer t;
     while(!quit) {
+        lag += t.get_elapsed();
         // Process user input
-        quit = keys.detect();
+        quit = keys.handle();
         if(quit) break;
-        // Run a single instruction
-        status = single_step();
-        if(status != 0) quit = true;
+        // Run as many instructions as necessary to compensate the lag
+        while(lag >= SECS_PER_CYCLE) {
+            status = single_step();
+            if(status != 0) {
+                quit = true;
+                break;
+            }
+            lag -= SECS_PER_CYCLE;
+        }
         // Refresh graphics
         screen.update();
     }
     return status;
 }
+
+#undef SECS_PER_CYCLE
 
 // Join two bytes into a single 16-bit value
 #define JOIN_BYTES(b1, b2) (((b1) << 8) | b2)
@@ -261,7 +275,7 @@ int Emulator::single_step() {
                     break;
                 case 0x0A:
                     // 0xFX0A: when a key is pressed, put its value in V[X]
-                    if(keys.any_pressed()) v[x] = keys.get_pressed();
+                    if(keys.any_pressed()) v[x] = keys.get_key();
                     else pc -= 2;
                     break;
                 case 0x15:

@@ -5,23 +5,21 @@
  * present and future rights to this software under copyright law.
  */
 
-#ifndef CHIP8_KEYPAD_HPP
-#define CHIP8_KEYPAD_HPP
+#ifndef CHIP8_TIMER_HPP
+#define CHIP8_TIMER_HPP
 
+#include "SDL_timer.h"
 #include <cstdint>
-
-// Handles user input
+#include <SDL2/SDL.h>
 
 namespace chip8 {
-    class Keypad {
+    class Timer {
         public:
-            int handle();
-            bool any_pressed() const;
-            bool is_pressed(uint8_t key) const { return keypad[key]; }
-            uint8_t get_key() const;
+            Timer() : start(SDL_GetPerformanceCounter()) {}
+            double get_elapsed();
         private:
-            bool keypad[16] = {0};
+            uint64_t start, end;
     };
 }
 
-#endif // CHIP8_KEYPAD_HPP
+#endif // CHIP8_TIMER_HPP

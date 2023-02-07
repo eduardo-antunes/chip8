@@ -37,6 +37,7 @@ namespace chip8 {
             uint32_t pixels[width * height] = {0};
             bool draw_flag = false;
 
+            // SDL stuff
             SDL_Window   *win = NULL;
             SDL_Renderer *ren = NULL;
             SDL_Texture  *tex = NULL;

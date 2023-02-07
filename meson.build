@@ -6,6 +6,7 @@ sources = files(
   'src/emulator.cpp',
   'src/screen.cpp',
   'src/keypad.cpp',
+  'src/timer.cpp',
 )
 
 sdl2_dep = dependency('sdl2')

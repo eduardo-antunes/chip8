@@ -42,8 +42,8 @@ Screen::Screen() {
 }
 
 void Screen::clear() {
-    draw_flag = true;
     memset(pixels, 0, width * height * sizeof(uint32_t));
+    request_update();
 }
 
 void Screen::update() {
@@ -56,10 +56,8 @@ void Screen::update() {
         SDL_UnlockTexture(tex);
 
         // Present the updated texture though the renderer
-        SDL_RenderClear(ren);
         SDL_RenderCopy(ren, tex, NULL, NULL);
         SDL_RenderPresent(ren);
-
     }
 }
 
