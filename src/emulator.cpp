@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <iostream>
-#include "timer.hpp"
+#include <SDL2/SDL.h>
 #include "screen.hpp"
 #include "emulator.hpp"
 
@@ -49,36 +49,56 @@ void Emulator::load_code(const std::vector<uint8_t> &code) {
     }
 }
 
-#define SECS_PER_CYCLE 0.002
+#define INSTS_PER_SECOND 700
+
+#define GET_TICKS() SDL_GetTicks()
+
+#define SLEEP(ms) SDL_Delay(ms)
 
 int Emulator::run() {
     int status = 0;
     bool quit = false;
     srand(time(NULL)); // seed RNG
     screen.request_update(); // to show the screen from the begginning
-    double lag = 0;
-    Timer t;
+
     while(!quit) {
-        lag += t.get_elapsed();
+        uint64_t start = GET_TICKS();
         // Process user input
         quit = keys.handle();
         if(quit) break;
-        // Run as many instructions as necessary to compensate the lag
-        while(lag >= SECS_PER_CYCLE) {
+        // Run instructions
+        for(int i = 0; i < INSTS_PER_SECOND / 60; ++i) {
             status = single_step();
             if(status != 0) {
                 quit = true;
                 break;
             }
-            lag -= SECS_PER_CYCLE;
         }
+        // Cap execution speed to 60 FPS
+        uint64_t end = GET_TICKS();
+        double elapsed = end - start;
+        SLEEP(elapsed < 16.667 ? 16.667 - elapsed : 0);
+        // Update the CPU timers
+        update_timers();
         // Refresh graphics
         screen.update();
     }
     return status;
 }
 
-#undef SECS_PER_CYCLE
+#undef INSTS_PER_SECOND
+#undef GET_TICKS
+#undef SLEEP
+
+void Emulator::update_timers() {
+    if(delay_timer > 0) --delay_timer;
+    if(sound_timer > 0) {
+        --sound_timer;
+        audio.play();
+    } else {
+        audio.pause();
+    }
+}
 
 // Join two bytes into a single 16-bit value
 #define JOIN_BYTES(b1, b2) (((b1) << 8) | b2)
@@ -107,8 +127,7 @@ int Emulator::single_step() {
                 screen.clear();
             } else if(inst == 0x00EE) {
                 // 0x00EE: return from subroutine
-                pc = stack.back();
-                stack.pop_back();
+                pc = stack[--sp];
             }
             break;
         case 1:
@@ -117,7 +136,7 @@ int Emulator::single_step() {
             break;
         case 2:
             // 0x2NNN: jump to subroutine
-            stack.push_back(pc);
+            stack[sp++] = pc;
             pc = nnn;
             break;
         case 3:
@@ -297,13 +316,17 @@ int Emulator::single_step() {
                     // consider just the last nibble of V[X]
                     index_reg += font_addr + GET_NIB(v[x], 1);
                     break;
-                case 0x33: 
+                case 0x33: {
                     // 0xFX33: convert the value of V[X] into BCD and store the
                     // result into the address specified by the index register
-                    memory[index_reg] = v[x] / 100;            // hundred's place
-                    memory[index_reg + 1] = (v[x] % 100) / 10; // ten's place
-                    memory[index_reg + 2] = v[x] % 10;         // one's place
+                    uint8_t bcd = v[x];
+                    memory[index_reg + 2] = bcd % 10; // one's place
+                    bcd /= 10;
+                    memory[index_reg + 1] = bcd % 10; // ten's place
+                    bcd /= 10;
+                    memory[index_reg] = bcd; // hundred's place
                     break;
+                }
                 case 0x55:
                     // 0xFX55: store the values of the registers from V[0] to
                     // V[X], inclusive, into memory starting from the address
@@ -328,9 +351,6 @@ int Emulator::single_step() {
             fprintf(stderr, "Unrecognized instruction: %4X\n", inst);
             return 1;
     }
-    // Update the CPU timers
-    if(delay_timer > 0) --delay_timer;
-    if(sound_timer > 0) --sound_timer; // TODO play sound
     return 0;
 }
 

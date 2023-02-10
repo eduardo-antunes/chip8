@@ -38,9 +38,9 @@ namespace chip8 {
             bool draw_flag = false;
 
             // SDL stuff
-            SDL_Window   *win = NULL;
-            SDL_Renderer *ren = NULL;
-            SDL_Texture  *tex = NULL;
+            SDL_Window   *window   = NULL;
+            SDL_Renderer *renderer = NULL;
+            SDL_Texture  *texture  = NULL;
     };
 }
 

@@ -5,21 +5,22 @@
  * present and future rights to this software under copyright law.
  */
 
-#ifndef CHIP8_TIMER_HPP
-#define CHIP8_TIMER_HPP
+#ifndef CHIP8_AUDIO_HPP
+#define CHIP8_AUDIO_HPP
 
-#include "SDL_timer.h"
-#include <cstdint>
 #include <SDL2/SDL.h>
 
 namespace chip8 {
-    class Timer {
+    class Audio {
         public:
-            Timer() : start(SDL_GetPerformanceCounter()) {}
-            double get_elapsed();
+            Audio();
+            void play()  { SDL_PauseAudio(0); }
+            void pause() { SDL_PauseAudio(1); }
+            ~Audio();
         private:
-            uint64_t start, end;
+            SDL_AudioSpec spec_;
+            int sample_nr = 4400;
     };
 }
 
-#endif // CHIP8_TIMER_HPP
+#endif // CHIP8_AUDIO_HPP

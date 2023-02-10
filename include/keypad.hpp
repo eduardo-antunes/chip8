@@ -17,10 +17,10 @@ namespace chip8 {
         public:
             int handle();
             bool any_pressed() const;
-            bool is_pressed(uint8_t key) const { return keypad[key]; }
+            bool is_pressed(uint8_t key) const { return key_state[key]; }
             uint8_t get_key() const;
         private:
-            bool keypad[16] = {0};
+            bool key_state[16] = {0};
     };
 }
 
