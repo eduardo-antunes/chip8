@@ -1,8 +1,17 @@
-/* I dedicate any and all copyright interest in this software to the
- * public domain. I make this dedication for the benefit of the public at
- * large and to the detriment of my heirs and successors. I intend this
- * dedication to be an overt act of relinquishment in perpetuity of all
- * present and future rights to this software under copyright law.
+/*
+ * Copyright 2023 Eduardo Antunes dos Santos Vieira
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License. 
  */
 
 #include <cstdint>
