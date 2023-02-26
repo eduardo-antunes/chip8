@@ -17,8 +17,8 @@
 #include <ctime>
 #include <cstdlib>
 #include <cstdint>
-#include <iostream>
-#include <SDL2/SDL.h>
+#include <SDL.h>
+
 #include "screen.hpp"
 #include "emulator.hpp"
 
@@ -44,14 +44,15 @@ Emulator::Emulator() {
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
-    // Load built-in font into RAM, starting from font_addr
-    for(uint16_t i = 0; i < 80; ++i)
-        ram[i + font_addr] = font[i];
+    // Load built-in font into RAM
+    uint16_t addr = font_start;
+    for(auto byte : font)
+        ram[addr++] = byte;
 }
 
 void Emulator::load_prog(const std::vector<uint8_t> &prog) {
     // Load code into RAM, starting from prog_addr
-    uint16_t addr = prog_addr;
+    uint16_t addr = prog_start;
     for(auto byte : prog)
         ram[addr++] = byte;
 }
@@ -66,7 +67,7 @@ int Emulator::run() {
     int status = 0;
     bool quit = false;
     srand(time(NULL)); // seed RNG
-    screen.request_update(); // to show the screen from the begginning
+    screen.request_refresh(); // to show the screen from the begginning
 
     while(!quit) {
         uint64_t start = GET_TICKS();
@@ -88,7 +89,7 @@ int Emulator::run() {
         // Update the CPU timers
         update_timers();
         // Refresh graphics
-        screen.update();
+        screen.refresh();
     }
     return status;
 }
@@ -112,26 +113,20 @@ void Emulator::update_timers() {
     }
 }
 
-// Join two bytes into a single 16-bit value
-#define JOIN_BYTES(b1, b2) (((b1) << 8) | b2)
-
 // Get the nth bit of a byte
 #define GET_BIT(byte, n) (((byte) & (1 << (7 - (n)))) ? 1 : 0)
 
-// Get the nth half (nibble) of a byte
-#define GET_NIB(byte, n) ((n) ? ((byte) & 0x0F) : (((byte) & 0xF0) >> 4))
-
 int Emulator::single_step() {
     // Fetch the 16 bits of an instruction and advance the PC
-    uint8_t first = ram[pc], second = ram[pc + 1];
-    uint16_t inst = JOIN_BYTES(first, second);
+    uint8_t b0 = ram[pc], b1 = ram[pc + 1];
+    uint16_t inst = (b0 << 8) | b1;
     pc += 2;
     // Break the instruction into its meaningful parts
-    uint8_t op   = GET_NIB(first, 0);
-    uint8_t x    = GET_NIB(first, 1);
-    uint8_t y    = GET_NIB(second, 0);
-    uint8_t n    = GET_NIB(second, 1);
-    uint8_t nn   = second;
+    uint8_t op   = (b0 & 0xF0) >> 4;
+    uint8_t x    = b0 & 0x0F;
+    uint8_t y    = (b1 & 0xF0) >> 4;
+    uint8_t n    = b1 & 0x0F;
+    uint8_t nn   = b1;
     uint16_t nnn = inst & 0x0FFF;
     // Decode and execute
     switch(op) {
@@ -176,7 +171,7 @@ int Emulator::single_step() {
             v[x] = nn;
             break;
         case 0x7:
-            // 0x7XNN: add NN to register VX, never set flag
+            // 0x7XNN: add NN to register VX, don't alter VF
             v[x] += nn;
             break;
         case 0x8:
@@ -204,7 +199,7 @@ int Emulator::single_step() {
                     v[x] += v[y];
                     break;
                 case 0x5:
-                    // 0x8XY5: subtract VY from VX, clear flag on borrow
+                    // 0x8XY5: set VX to VX minus VY, clear flag on borrow
                     set_flag(v[x] >= v[y]);
                     v[x] -= v[y];
                     break;
@@ -217,9 +212,9 @@ int Emulator::single_step() {
                     v[x] >>= 1;
                     break;
                 case 0x7:
-                    // 0x8XY7: subtract VX from VY, clear flag on borrow
+                    // 0x8XY7: set VX to VY minus VX, clear flag on borrow
                     set_flag(v[y] >= v[x]);
-                    v[y] -= v[x];
+                    v[x] = v[y] - v[x];
                     break;
                 case 0xE:
                     // 0x8XYE: bitwise shift VX to the left, set flag to bit
@@ -238,7 +233,7 @@ int Emulator::single_step() {
             if(n == 0 && v[x] != v[y]) pc += 2;
             break;
         case 0xA:
-            // 0xANNN: set index register to NNN
+            // 0xANNN: point the index register to the address NNN
             index = nnn;
             break;
         case 0xB:
@@ -273,11 +268,11 @@ int Emulator::single_step() {
                 for(int j = 0; j < 8; ++j) {
                     int pixel = GET_BIT(line, j);
                     if(pixel) {
-                        if(screen.is_on(x_pos, y_pos)) {
-                            screen.erase(x_pos, y_pos);
+                        if(screen.get_p(x_pos, y_pos)) {
+                            screen.set_p(x_pos, y_pos, false);
                             set_flag(true);
                         } else {
-                            screen.fill(x_pos, y_pos);
+                            screen.set_p(x_pos, y_pos, true);
                         }
                     }
                     ++x_pos;
@@ -289,10 +284,11 @@ int Emulator::single_step() {
                 if(y_pos >= screen.height) break;
                 x_pos = original_x; // reset x position
             }
-            screen.request_update(); // refresh graphics
+            screen.request_refresh(); // graphics should be refreshed
             break;
         }
         case 0xE:
+            // Multiple instructions possible
             switch(nn) {
                 case 0x9E:
                     // 0xEX9E: skip next instruction if the key specified by
@@ -306,6 +302,8 @@ int Emulator::single_step() {
                     if(!keys.is_pressed(v[x]))
                         pc += 2;
                     break;
+                default:
+                    fprintf(stderr, "Unrecognized instruction: %4X\n", inst);
             }
             break;
         case 0xF:
@@ -330,14 +328,14 @@ int Emulator::single_step() {
                 case 0x1E:
                     // 0xFX1E: add VX to the index register
                     index += v[x];
-                    set_flag(index >= 0x1000);
+                    set_flag(index >= 0x1000); // Amiga interpreter behavior
                     break;
                 case 0x29:
                     // 0xFX29: set the index register to the address of the
                     // hexadecimal character specified by VX in the builtin
                     // font. Following the behavior of the original chip-8, we
                     // consider just the last nibble of VX
-                    index += font_addr + GET_NIB(v[x], 1);
+                    index += font_start + (v[x] & 0x0F) * 5;
                     break;
                 case 0x33: {
                     // 0xFX33: convert the value of VX into BCD and store the
@@ -368,6 +366,8 @@ int Emulator::single_step() {
                     for(uint8_t i = 0; i <= x; ++i)
                         v[i] = ram[index + i];
                     break;
+                default:
+                    fprintf(stderr, "Unrecognized instruction: %4X\n", inst);
             }
             break;
         default:
@@ -378,7 +378,3 @@ int Emulator::single_step() {
 }
 
 #undef GET_BIT
-
-#undef GET_NIB
-
-#undef JOIN_BYTES

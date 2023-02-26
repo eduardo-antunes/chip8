@@ -10,7 +10,7 @@ sources = files(
 )
 
 sdl2_dep = dependency('sdl2')
-executable('chip8', sources, 
+executable('chip8-emulator', sources, 
   include_directories: inc_dir,
   dependencies: sdl2_dep,
 )

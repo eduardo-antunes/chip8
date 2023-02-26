@@ -30,48 +30,61 @@ namespace chip8 {
     class Emulator {
         public:
             Emulator();
+
             Emulator(const std::vector<uint8_t> &prog) 
                 : Emulator() { load_prog(prog); }
+
             // Load program into RAM
             void load_prog(const std::vector<uint8_t> &prog);
+
             // Run currently loaded program
             int run();
 
         private:
             // Address of the built-in fontset
-            static const uint16_t font_addr = 0x50;
+            static const uint16_t font_start = 0x50;
+
             // Starting address of the program
-            static const uint16_t prog_addr = 0x200;
+            static const uint16_t prog_start = 0x200;
 
             // 4KiB of RAM for program data
             uint8_t ram[4096] = {0};
-            // Program counter, which contains the address of the next 
-            // instruction to be executed and thus is used for flow control
-            uint16_t pc = prog_addr;
-            // Index register, used to point at stuff in memory
+
+            // Program register: contains the address of the next instruction
+            // to be executed. Thus, it is used for flow control
+            uint16_t pc = prog_start;
+
+            // Index register: used to point at stuff in memory
             uint16_t index = 0;
-            // Stack pointer and stack, for subroutines
+
+            // Stack pointer and stack: for subroutines
             uint16_t stack[16] = {0};
             uint16_t sp = 0;
-            // Delay timer, a counter that is simply decremented at a constant
-            // speed; useful for timing stuff
+
+            // Delay timer: simply a general purpose timer. It should be
+            // decremented at a constante rate of 60Hz
             uint8_t delay = 0;
-            // Sound timer, another counter that is decremented at a constant 
-            // speed, except it also dictates whether sound is played
+
+            // Sound timer: behaves exactly like the delay timer, but while
+            // it's non-zero, a sound is played
             uint8_t sound = 0;
-            // Variable registers, 16 general purpose registers, except for the
-            // last one, which doubles as a flag register
+
+            // Variable registers: 16 general purpose registers, except for the
+            // last one, which serves as a flag register
             uint8_t v[16] = {0};
+
+            // Graphics component
+            Screen screen;
 
             // Set or clear the flag register, VF
             void set_flag(bool f) { v[0xF] = f ? 1 : 0; }
+
             // Update both timers
             void update_timers();
+
             // Single step through the program
             int single_step();
 
-            // Input and output:
-            Screen screen;
             Keypad keys;
             Audio audio;
     };

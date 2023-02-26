@@ -24,32 +24,51 @@
 namespace chip8 {
     class Screen {
         public:
+            // Conceptual dimensions of the screen
             static const int width = 64, height = 32;
 
+            // Create SDL objects
             Screen();
 
-            bool is_on(int x, int y) { return pixels[width * y + x] == on; }
+            // Clear the screen
+            void clear() { for(auto &v : p) v = false; refresh_flag = true; }
 
-            void fill(int x, int y) { pixels[width * y + x] = on; }
+            // Inspect the conceptual model
+            bool get_p(int x, int y) { return p[width * y + x]; }
 
-            void erase(int x, int y) { pixels[width * y + x] = off; }
+            // Manipulate the conceptual model
+            void set_p(int x, int y, bool b) { p[width * y + x] = b; }
 
-            void clear();
+            // Mark changes as complete, triggering graphics to be refreshed
+            void request_refresh() { refresh_flag = true; }
 
-            void request_update() { draw_flag = true; }
+            // Refresh if requested
+            void refresh();
 
-            void update();
-
+            // Destroy SDL objects
             ~Screen();
-        private:
-            static const uint32_t on = 0xFFFFFFFF, off = 0xFF000000;
-            uint32_t pixels[width * height] = {0};
-            bool draw_flag = false;
 
-            // SDL stuff
-            SDL_Window   *window   = NULL;
-            SDL_Renderer *renderer = NULL;
-            SDL_Texture  *texture  = NULL;
+        private:
+            // Colors used in the graphics, in RGBA format
+            static const uint32_t fg_color = 0xFFFFFFFF;
+            static const uint32_t bg_color = 0x000000FF;
+
+            // Conceptual model of the screen
+            bool p[width * height] = {0};
+
+            // Real pixels that get displayed
+            uint32_t pixels[width * height] = {0};
+
+            // Condition for a refresh to happen
+            bool refresh_flag = false;
+
+            // The scale factor for the pixels
+            static const int scale = 10;
+
+            // SDL objects to produce the graphics
+            SDL_Window *window = nullptr;
+            SDL_Renderer *renderer = nullptr;
+            SDL_Texture *texture  = nullptr;
     };
 }
 
