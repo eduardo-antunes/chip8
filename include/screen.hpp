@@ -17,7 +17,7 @@
 #ifndef CHIP8_SCREEN_HPP
 #define CHIP8_SCREEN_HPP
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <cstdint>
 #include <cstring>
 
@@ -34,7 +34,7 @@ namespace chip8 {
             void clear() { for(auto &v : p) v = false; refresh_flag = true; }
 
             // Inspect the conceptual model
-            bool get_p(int x, int y) { return p[width * y + x]; }
+            bool is_on(int x, int y) { return p[width * y + x]; }
 
             // Manipulate the conceptual model
             void set_p(int x, int y, bool b) { p[width * y + x] = b; }

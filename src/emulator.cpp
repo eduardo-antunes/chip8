@@ -14,10 +14,10 @@
  *  limitations under the License. 
  */
 
+#include <SDL.h>
 #include <ctime>
 #include <cstdlib>
 #include <cstdint>
-#include <SDL.h>
 
 #include "screen.hpp"
 #include "emulator.hpp"
@@ -51,17 +51,13 @@ Emulator::Emulator() {
 }
 
 void Emulator::load_prog(const std::vector<uint8_t> &prog) {
-    // Load code into RAM, starting from prog_addr
+    // Load program into RAM
     uint16_t addr = prog_start;
     for(auto byte : prog)
         ram[addr++] = byte;
 }
 
 #define INSTS_PER_SECOND 700
-
-#define GET_TICKS() SDL_GetTicks()
-
-#define SLEEP(t) SDL_Delay(t)
 
 int Emulator::run() {
     int status = 0;
@@ -70,10 +66,10 @@ int Emulator::run() {
     screen.request_refresh(); // to show the screen from the begginning
 
     while(!quit) {
-        uint64_t start = GET_TICKS();
+        uint64_t before = SDL_GetTicks();
         // Process user input
         quit = keys.handle();
-        if(quit) break;
+        if(quit == 1) break;
         // Run instructions
         for(int i = 0; i < INSTS_PER_SECOND / 60; ++i) {
             status = single_step();
@@ -82,23 +78,19 @@ int Emulator::run() {
                 break;
             }
         }
-        // Cap execution speed to 60 FPS
-        uint64_t end = GET_TICKS();
-        double elapsed = end - start;
-        SLEEP(elapsed < 16.667 ? 16.667 - elapsed : 0);
         // Update the CPU timers
         update_timers();
         // Refresh graphics
         screen.refresh();
+        // Cap execution speed to 60 FPS
+        uint64_t after = SDL_GetTicks();
+        double elapsed = after - before;
+        SDL_Delay(elapsed < 16.667 ? 16.667 - elapsed : 0);
     }
     return status;
 }
 
 #undef INSTS_PER_SECOND
-
-#undef GET_TICKS
-
-#undef SLEEP
 
 void Emulator::update_timers() {
     // The delay timer is constantly decremented while it's above zero
@@ -107,9 +99,9 @@ void Emulator::update_timers() {
     // zero, a beeping sound must be played
     if(sound > 0) {
         --sound;
-        audio.play();
+        speakers.play();
     } else {
-        audio.pause();
+        speakers.stop();
     }
 }
 
@@ -121,6 +113,7 @@ int Emulator::single_step() {
     uint8_t b0 = ram[pc], b1 = ram[pc + 1];
     uint16_t inst = (b0 << 8) | b1;
     pc += 2;
+
     // Break the instruction into its meaningful parts
     uint8_t op   = (b0 & 0xF0) >> 4;
     uint8_t x    = b0 & 0x0F;
@@ -128,6 +121,7 @@ int Emulator::single_step() {
     uint8_t n    = b1 & 0x0F;
     uint8_t nn   = b1;
     uint16_t nnn = inst & 0x0FFF;
+
     // Decode and execute
     switch(op) {
         case 0x0:
@@ -268,7 +262,7 @@ int Emulator::single_step() {
                 for(int j = 0; j < 8; ++j) {
                     int pixel = GET_BIT(line, j);
                     if(pixel) {
-                        if(screen.get_p(x_pos, y_pos)) {
+                        if(screen.is_on(x_pos, y_pos)) {
                             screen.set_p(x_pos, y_pos, false);
                             set_flag(true);
                         } else {
@@ -312,11 +306,15 @@ int Emulator::single_step() {
                     // 0xFX07: set VX to the value of the delay timer
                     v[x] = delay;
                     break;
-                case 0x0A:
+                case 0x0A: {
                     // 0xFX0A: when a key is pressed, put its value in VX
-                    if(keys.any_pressed()) v[x] = keys.get_key();
-                    else pc -= 2;
+                    auto key = keys.get_pressed();
+                    if(key.has_value())
+                        v[x] = key.value();
+                    else
+                        pc -= 2;
                     break;
+                }
                 case 0x15:
                     // 0xFX15: set the delay timer to the value of VX
                     delay = v[x];

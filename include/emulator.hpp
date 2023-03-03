@@ -19,9 +19,10 @@
 
 #include <cstdint>
 #include <vector>
-#include "audio.hpp"
+
 #include "screen.hpp"
 #include "keypad.hpp"
+#include "speakers.hpp"
 
 // This class represents the emulator itself; the CPU, its state
 // and its peripherals. It also includes a variety of utility functions.
@@ -73,8 +74,14 @@ namespace chip8 {
             // last one, which serves as a flag register
             uint8_t v[16] = {0};
 
+            // Input-handling component
+            Keypad keys;
+
             // Graphics component
             Screen screen;
+
+            // Audio component
+            Speakers speakers;
 
             // Set or clear the flag register, VF
             void set_flag(bool f) { v[0xF] = f ? 1 : 0; }
@@ -84,9 +91,6 @@ namespace chip8 {
 
             // Single step through the program
             int single_step();
-
-            Keypad keys;
-            Audio audio;
     };
 }
 

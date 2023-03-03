@@ -18,18 +18,25 @@
 #define CHIP8_KEYPAD_HPP
 
 #include <cstdint>
+#include <optional>
 
 // Handles user input
 
 namespace chip8 {
     class Keypad {
         public:
+            // Handles user input
             int handle();
-            bool any_pressed() const;
-            bool is_pressed(uint8_t key) const { return key_state[key]; }
-            uint8_t get_key() const;
+
+            // Check if a certain key is pressed
+            bool is_pressed(uint8_t k) const;
+
+            // If a key is pressed, get it
+            std::optional<uint8_t> get_pressed() const;
+
         private:
-            bool key_state[16] = {0};
+            // Abstract representation of the keypad
+            bool keys[16] = {0};
     };
 }
 

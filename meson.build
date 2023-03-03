@@ -1,4 +1,6 @@
-project('chip8', 'cpp')
+project('chip8', 'cpp',
+  default_options: ['cpp_std=c++17']
+)
 
 inc_dir = include_directories('include')
 sources = files(
@@ -6,7 +8,7 @@ sources = files(
   'src/emulator.cpp',
   'src/screen.cpp',
   'src/keypad.cpp',
-  'src/audio.cpp',
+  'src/speakers.cpp',
 )
 
 sdl2_dep = dependency('sdl2')

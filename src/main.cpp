@@ -14,11 +14,11 @@
  *  limitations under the License. 
  */
 
+#include <SDL.h>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <SDL2/SDL.h>
 
 #include "emulator.hpp"
 

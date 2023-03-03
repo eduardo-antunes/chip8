@@ -14,7 +14,9 @@
  *  limitations under the License. 
  */
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
+#include <optional>
+
 #include "keypad.hpp"
 
 using namespace chip8;
@@ -25,45 +27,46 @@ int Keypad::handle() {
         switch(event.type) {
             case SDL_QUIT:
                 return 1; // should quit
+
             case SDL_KEYDOWN:
                 switch(event.key.keysym.scancode) {
-                    case SDL_SCANCODE_1: key_state[0x1] = true; break;
-                    case SDL_SCANCODE_2: key_state[0x2] = true; break;
-                    case SDL_SCANCODE_3: key_state[0x3] = true; break;
-                    case SDL_SCANCODE_4: key_state[0xC] = true; break;
-                    case SDL_SCANCODE_Q: key_state[0x4] = true; break;
-                    case SDL_SCANCODE_W: key_state[0x5] = true; break;
-                    case SDL_SCANCODE_E: key_state[0x6] = true; break;
-                    case SDL_SCANCODE_R: key_state[0xD] = true; break;
-                    case SDL_SCANCODE_A: key_state[0x7] = true; break;
-                    case SDL_SCANCODE_S: key_state[0x8] = true; break;
-                    case SDL_SCANCODE_D: key_state[0x9] = true; break;
-                    case SDL_SCANCODE_F: key_state[0xe] = true; break;
-                    case SDL_SCANCODE_Z: key_state[0xA] = true; break;
-                    case SDL_SCANCODE_X: key_state[0x0] = true; break;
-                    case SDL_SCANCODE_C: key_state[0xB] = true; break;
-                    case SDL_SCANCODE_V: key_state[0xF] = true; break;
+                    case SDL_SCANCODE_1: keys[0x1] = true; break;
+                    case SDL_SCANCODE_2: keys[0x2] = true; break;
+                    case SDL_SCANCODE_3: keys[0x3] = true; break;
+                    case SDL_SCANCODE_4: keys[0xC] = true; break;
+                    case SDL_SCANCODE_Q: keys[0x4] = true; break;
+                    case SDL_SCANCODE_W: keys[0x5] = true; break;
+                    case SDL_SCANCODE_E: keys[0x6] = true; break;
+                    case SDL_SCANCODE_R: keys[0xD] = true; break;
+                    case SDL_SCANCODE_A: keys[0x7] = true; break;
+                    case SDL_SCANCODE_S: keys[0x8] = true; break;
+                    case SDL_SCANCODE_D: keys[0x9] = true; break;
+                    case SDL_SCANCODE_F: keys[0xe] = true; break;
+                    case SDL_SCANCODE_Z: keys[0xA] = true; break;
+                    case SDL_SCANCODE_X: keys[0x0] = true; break;
+                    case SDL_SCANCODE_C: keys[0xB] = true; break;
+                    case SDL_SCANCODE_V: keys[0xF] = true; break;
                     default: break;
                 }
                 break;
             case SDL_KEYUP:
                 switch(event.key.keysym.scancode) {
-                    case SDL_SCANCODE_1: key_state[0x1] = false; break;
-                    case SDL_SCANCODE_2: key_state[0x2] = false; break;
-                    case SDL_SCANCODE_3: key_state[0x3] = false; break;
-                    case SDL_SCANCODE_4: key_state[0xC] = false; break;
-                    case SDL_SCANCODE_Q: key_state[0x4] = false; break;
-                    case SDL_SCANCODE_W: key_state[0x5] = false; break;
-                    case SDL_SCANCODE_E: key_state[0x6] = false; break;
-                    case SDL_SCANCODE_R: key_state[0xD] = false; break;
-                    case SDL_SCANCODE_A: key_state[0x7] = false; break;
-                    case SDL_SCANCODE_S: key_state[0x8] = false; break;
-                    case SDL_SCANCODE_D: key_state[0x9] = false; break;
-                    case SDL_SCANCODE_F: key_state[0xe] = false; break;
-                    case SDL_SCANCODE_Z: key_state[0xA] = false; break;
-                    case SDL_SCANCODE_X: key_state[0x0] = false; break;
-                    case SDL_SCANCODE_C: key_state[0xB] = false; break;
-                    case SDL_SCANCODE_V: key_state[0xF] = false; break;
+                    case SDL_SCANCODE_1: keys[0x1] = false; break;
+                    case SDL_SCANCODE_2: keys[0x2] = false; break;
+                    case SDL_SCANCODE_3: keys[0x3] = false; break;
+                    case SDL_SCANCODE_4: keys[0xC] = false; break;
+                    case SDL_SCANCODE_Q: keys[0x4] = false; break;
+                    case SDL_SCANCODE_W: keys[0x5] = false; break;
+                    case SDL_SCANCODE_E: keys[0x6] = false; break;
+                    case SDL_SCANCODE_R: keys[0xD] = false; break;
+                    case SDL_SCANCODE_A: keys[0x7] = false; break;
+                    case SDL_SCANCODE_S: keys[0x8] = false; break;
+                    case SDL_SCANCODE_D: keys[0x9] = false; break;
+                    case SDL_SCANCODE_F: keys[0xe] = false; break;
+                    case SDL_SCANCODE_Z: keys[0xA] = false; break;
+                    case SDL_SCANCODE_X: keys[0x0] = false; break;
+                    case SDL_SCANCODE_C: keys[0xB] = false; break;
+                    case SDL_SCANCODE_V: keys[0xF] = false; break;
                     default: break;
                 }
                 break;
@@ -72,16 +75,12 @@ int Keypad::handle() {
     return 0; // no need to quit
 }
 
-bool Keypad::any_pressed() const {
-    for(auto key_pressed : key_state)
-        if(key_pressed) return true;
-    return false;
+bool Keypad::is_pressed(uint8_t k) const {
+    return k < 16 ? keys[k] : false; 
 }
 
-uint8_t Keypad::get_key() const {
-    for(int key = 0; key <= 0xF; ++key) {
-        if(key_state[key])
-            return key;
-    }
-    return 0x10; // should check if there's any key pressed beforehand
+std::optional<uint8_t> Keypad::get_pressed() const {
+    for(uint8_t k = 0; k <= 0xF; ++k)
+        if(keys[k]) return k;
+    return {};
 }
