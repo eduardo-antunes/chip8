@@ -2,13 +2,13 @@
 
 Chip-8 is a low-level, interpreted programming language made in the mid-1970s by Joseph Weisbecker. Its original purpose was to facilitate game development for the COSMAC VIP and Telmac 1800 computers. Today, despite both of these having long become obsolete, Chip-8 remains relevant for its simplicity and low-level nature. Building an emulator (or, more accuratelly, an interpreter) capable of running it is considered to be kind of the "Hello, World" of emulation. You can find out more about this language [here](https://en.wikipedia.org/wiki/CHIP-8).
 
-This particular emulator was written in C++ 17, using SDL2 for graphics, sound and user input. It supports Chip-8's instruction set in its entirety. For ambiguous instructions (that is, those that have historically had different behaviors in different implementations of the language), it mostly follows the conventions stablished by more modern interpreters, such as Chip-48 and Super-Chip; consult the [source code](https://github.com/eduardo-antunes/chip8/blob/main/src/emulator.cpp#L200) to view exactly which instructions received this treatment.
+This particular emulator was written in C++ 17, using SDL2 for graphics, sound and user input. It supports Chip-8's instruction set in its entirety. For ambiguous instructions (that is, those that have historically had different behaviors in different implementations of the language), it mostly follows the conventions stablished by more modern interpreters, such as Chip-48 and Super-Chip; consult the [source code](https://github.com/eduardo-antunes/chip8/blob/main/src/emulator.cpp#L111) to view exactly which instructions received this treatment.
 
 # Installation
 
 To compile this emulator, you will need a C++ compiler that supports C++ 17, meson, a meson backend (such as ninja), and SDL2 development files. Once all of them are installed, you can get the emulator binaries with the following commands:
 
-```
+```sh
 $ git clone https://github.com/eduardo-antunes/chip8 chip8-emulator
 $ cd chip8-emulator
 $ meson setup build
