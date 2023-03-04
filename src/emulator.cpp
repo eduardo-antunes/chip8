@@ -18,8 +18,8 @@
 #include <ctime>
 #include <cstdlib>
 #include <cstdint>
+#include <iostream>
 
-#include "screen.hpp"
 #include "emulator.hpp"
 
 using namespace chip8;
@@ -62,7 +62,7 @@ void Emulator::load_prog(const std::vector<uint8_t> &prog) {
 int Emulator::run() {
     int status = 0;
     bool quit = false;
-    srand(time(NULL)); // seed RNG
+    srand(time(nullptr)); // seed RNG
     screen.request_refresh(); // to show the screen from the begginning
 
     while(!quit) {
@@ -78,14 +78,14 @@ int Emulator::run() {
                 break;
             }
         }
+        // Update the CPU timers
+        update_timers();
         // Cap execution speed to 60 FPS
         uint64_t after = SDL_GetPerformanceCounter();
         double elapsed = (double)(after - before) * 1000 / SDL_GetPerformanceFrequency();
         SDL_Delay(elapsed < 16.667 ? 16.667 - elapsed : 0);
         // Refresh graphics
         screen.refresh();
-        // Update the CPU timers
-        update_timers();
     }
     return status;
 }
@@ -113,7 +113,6 @@ int Emulator::single_step() {
     uint8_t b0 = ram[pc], b1 = ram[pc + 1];
     uint16_t inst = (b0 << 8) | b1;
     pc += 2;
-
     // Break the instruction into its meaningful parts
     uint8_t op   = (b0 & 0xF0) >> 4;
     uint8_t x    = b0 & 0x0F;
@@ -121,7 +120,6 @@ int Emulator::single_step() {
     uint8_t n    = b1 & 0x0F;
     uint8_t nn   = b1;
     uint16_t nnn = inst & 0x0FFF;
-
     // Decode and execute
     switch(op) {
         case 0x0:
@@ -301,6 +299,7 @@ int Emulator::single_step() {
             }
             break;
         case 0xF:
+            // Multiple instructions possible
             switch(nn) {
                 case 0x07:
                     // 0xFX07: set VX to the value of the delay timer

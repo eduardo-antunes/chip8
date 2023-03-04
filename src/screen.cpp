@@ -78,10 +78,10 @@ void Screen::refresh() {
     // Map the conceptual model to the pixels
     for(uint32_t i = 0; i < width * height; ++i) {
         if(p[i] && pixels[i] != fg_color)
-            // Progress towards foreground color
-            pixels[i] = lerp_colors(pixels[i], fg_color, lerp_factor);
+            // Instantly transition to foreground color
+            pixels[i] = fg_color;
         else if(!p[i] && pixels[i] != bg_color)
-            // Progress towards background color
+            // Slowly fade towards background color
             pixels[i] = lerp_colors(pixels[i], bg_color, lerp_factor);
     }
 

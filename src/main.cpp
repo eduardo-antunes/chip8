@@ -47,8 +47,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error: " << SDL_GetError() << std::endl;
         return 2;
     }
-    auto bin = read_file(argv[1]);
-    chip8::Emulator chip8_emu(bin);
+    auto program = read_file(argv[1]);
+    chip8::Emulator chip8_emu(program);
     chip8_emu.run();
     SDL_Quit();
     return 0;
