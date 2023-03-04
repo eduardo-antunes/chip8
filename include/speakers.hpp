@@ -17,8 +17,6 @@
 #ifndef CHIP8_SPEAKERS_HPP
 #define CHIP8_SPEAKERS_HPP
 
-#define SAMPLE_RATE 44100
-
 #include <SDL.h>
 
 namespace chip8 {
@@ -31,19 +29,21 @@ namespace chip8 {
 
         private:
             // Frequency of the beeping sound
-            constexpr static const double freq = 441.0;
-            // Amplitude of the beeping sound
-            constexpr static const double amp = 28000;
+            static const uint32_t frequency = 441;
+            // Volume of the beeping sound
+            static const int16_t tone_vol = 2800;
+            // Sample rate of the beeping sound
+            static const uint32_t sample_rate = 44100;
 
             // SDL objects to produce audio
             SDL_AudioSpec spec;
             SDL_AudioDeviceID dev;
 
+            // Simple flag to control audio playing
             bool sound_playing = false;
-            int sample_index = 0;
 
             // Audio sampling callback
-            static void audio_callback(void *user_data, uint8_t *raw_buf, int bytes);
+            static void generate(void *user, uint8_t *buf, int bytes);
     };
 }
 

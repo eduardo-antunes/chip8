@@ -53,6 +53,13 @@ namespace chip8 {
             static const uint32_t fg_color = 0xFFFFFFFF;
             static const uint32_t bg_color = 0x000000FF;
 
+            // Color used in the transition from the background color to the
+            // foreground color and vice-versa, to reduce screen flickering
+            static const uint32_t tr_color = 0x7F7F7FFF;
+
+            // t-factor used for linear interpolation
+            constexpr static const double lerp_factor = 0.5;
+
             // Conceptual model of the screen
             bool p[width * height] = {0};
 

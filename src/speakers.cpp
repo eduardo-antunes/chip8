@@ -16,31 +16,30 @@
 
 #include <SDL.h>
 #include <cstdint>
-#include <iostream>
-#include <cmath>
+#include <stdexcept>
 
 #include "speakers.hpp"
 
 using namespace chip8;
 
-void Speakers::audio_callback(void *user_data, uint8_t *raw_buf, int bytes) {
-    int length = bytes / 2; // two bytes per sample
-    int16_t *buf = reinterpret_cast<int16_t*>(raw_buf);
-    int &sample_index = *reinterpret_cast<int*>(user_data);
-
-    for(int i = 0; i < length; ++i, ++sample_index) {
-        double time = sample_index / (double) SAMPLE_RATE;
-        buf[i] = (int16_t) (amp * std::sin(2.0 * M_PI * freq * time));
+void Speakers::generate(void *user, uint8_t *buf, int bytes) {
+    static uint32_t sample_nr = 0;
+    int16_t *audio_data = (int16_t*) buf;
+    int length = bytes / 2; // each sample has two bytes
+    // Generate a standard square wave
+    uint32_t half_period = (sample_rate / frequency) / 2;
+    for(int i = 0; i < length; ++i, ++sample_nr) {
+        audio_data[i] = ((sample_nr / half_period) % 2) ? tone_vol : -tone_vol;
     }
 }
 
 Speakers::Speakers() {
     SDL_AudioSpec want = {
-        .freq = SAMPLE_RATE,
+        .freq = sample_rate,
         .format = AUDIO_S16SYS,
-        .samples = 2048,
-        .callback = audio_callback,
-        .userdata = &sample_index,
+        .samples = 512,
+        .callback = generate,
+        .userdata = nullptr,
     };
     dev = SDL_OpenAudioDevice(nullptr, 0, &want, &spec, 0);
     if(dev <= 0)

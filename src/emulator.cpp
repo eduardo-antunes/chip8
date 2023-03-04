@@ -66,7 +66,7 @@ int Emulator::run() {
     screen.request_refresh(); // to show the screen from the begginning
 
     while(!quit) {
-        uint64_t before = SDL_GetTicks();
+        uint64_t before = SDL_GetPerformanceCounter();
         // Process user input
         quit = keys.handle();
         if(quit == 1) break;
@@ -78,14 +78,14 @@ int Emulator::run() {
                 break;
             }
         }
-        // Update the CPU timers
-        update_timers();
+        // Cap execution speed to 60 FPS
+        uint64_t after = SDL_GetPerformanceCounter();
+        double elapsed = (double)(after - before) * 1000 / SDL_GetPerformanceFrequency();
+        SDL_Delay(elapsed < 16.667 ? 16.667 - elapsed : 0);
         // Refresh graphics
         screen.refresh();
-        // Cap execution speed to 60 FPS
-        uint64_t after = SDL_GetTicks();
-        double elapsed = after - before;
-        SDL_Delay(elapsed < 16.667 ? 16.667 - elapsed : 0);
+        // Update the CPU timers
+        update_timers();
     }
     return status;
 }
