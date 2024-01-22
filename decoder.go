@@ -41,37 +41,37 @@ type Instruction struct {
 
 func Decode(msb, lsb uint8) Instruction {
 	fullcode := (uint16(msb) << 8) | uint16(lsb)
-    opcode := msb >> 4
+	opcode := msb >> 4
 	return Instruction{
 		x:    msb & 0xF,
 		y:    lsb >> 4,
 		n:    lsb & 0xF,
 		arg:  lsb,
 		addr: fullcode & 0xFFF,
-        op:   decodeOperation(opcode, fullcode),
+		op:   decodeOperation(opcode, fullcode),
 	}
 }
 
 func decodeOperation(opcode uint8, fullcode uint16) operation {
-    // Auxiliary table used to simplify decoding
-    var decodeTable = [...]operation{
-        0x1: JUMP,
-        0x6: LOAD,
-        0x7: ADD,
-        0xA: LOADI,
-        0xD: DRAW,
-    }
-    // For most opcodes, a simple lookup to the decode table suffices
-    if opcode != 0x0 && opcode != 0x8 && opcode < 0xE {
-        return decodeTable[opcode]
-    }
-    // The other opcodes each map to multiple operations, so we have to
-    // check the full code for the instruction
-    switch fullcode {
-    case 0x00E0:
-        return CLR
-    }
-    // If we get here, we have an error on our hands
-    log.Panicf("Weird instruction 0x%X\n", fullcode)
-    return 0 // doesn't happen because panic is called
+	// Auxiliary table used to simplify decoding
+	var decodeTable = [...]operation{
+		0x1: JUMP,
+		0x6: LOAD,
+		0x7: ADD,
+		0xA: LOADI,
+		0xD: DRAW,
+	}
+	// For most opcodes, a simple lookup to the decode table suffices
+	if opcode != 0x0 && opcode != 0x8 && opcode < 0xE {
+		return decodeTable[opcode]
+	}
+	// The other opcodes each map to multiple operations, so we have to
+	// check the full code for the instruction
+	switch fullcode {
+	case 0x00E0:
+		return CLR
+	}
+	// If we get here, we have an error on our hands
+	log.Panicf("Weird instruction 0x%X\n", fullcode)
+	return 0 // doesn't happen because panic is called
 }

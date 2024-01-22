@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	w          = 64  // screen width
-	h          = 32  // screen height
+	W          = 64  // screen width
+	H          = 32  // screen height
 	scale      = 10  // scale factor for each pixel
 	lerpFactor = 0.5 // lerp fading factor
 )
@@ -38,9 +38,8 @@ type color struct {
 type Screen struct {
 	window      *sdl.Window
 	renderer    *sdl.Renderer
-	texture     *sdl.Texture
-	display     [h * w]bool
-	pixels      [h * w * 4]byte
+	display     [H * W]bool
+	pixels      [H * W]color
 	refreshFlag bool
 }
 
@@ -62,7 +61,7 @@ var colorOff = color{
 func NewScreen() *Screen {
 	// Create window though SDL
 	win, err := sdl.CreateWindow("Chip8 emulator", sdl.WINDOWPOS_UNDEFINED,
-		sdl.WINDOWPOS_UNDEFINED, w*scale, h*scale, sdl.WINDOW_SHOWN)
+		sdl.WINDOWPOS_UNDEFINED, W*scale, H*scale, sdl.WINDOW_SHOWN)
 	if err != nil {
 		log.Panicln("Could not create the graphical window")
 	}
@@ -71,18 +70,10 @@ func NewScreen() *Screen {
 	if err != nil {
 		log.Panicln("Could not setup a renderer for the window")
 	}
-	ren.SetLogicalSize(w, h)
-	// Create a texture to render things to
-	tex, err := ren.CreateTexture(sdl.PIXELFORMAT_RGBA8888,
-		sdl.TEXTUREACCESS_STREAMING, w, h)
-	if err != nil {
-		log.Panicln("Could not create the main texture")
-	}
 	// Return the initialized screen
 	return &Screen{
 		window:   win,
 		renderer: ren,
-		texture:  tex,
 	}
 }
 
@@ -92,13 +83,13 @@ func (scr *Screen) Close() {
 }
 
 // Set state of a pixel (on/off)
-func (scr *Screen) SetPixel(x, y byte, on bool) {
-    scr.display[y*w+x] = on;
+func (scr *Screen) SetPixel(x, y uint32, on bool) {
+	scr.display[y*W+x] = on
 }
 
 // Get state of a pixel (on/off)
-func (scr *Screen) GetPixel(x, y byte) bool {
-    return scr.display[y*w+x]
+func (scr *Screen) GetPixel(x, y uint32) bool {
+	return scr.display[y*W+x]
 }
 
 // Marks any changes to the screen as complete, triggering graphics to be
@@ -109,7 +100,7 @@ func (scr *Screen) RequestRefresh() {
 
 // Clear the contents of the screen
 func (scr *Screen) Clear() {
-	for i := 0; i < h*w; i++ {
+	for i := 0; i < H*W; i++ {
 		scr.display[i] = false
 	}
 	scr.refreshFlag = true
@@ -117,49 +108,36 @@ func (scr *Screen) Clear() {
 
 // Refresh graphics if, and only if it was requested
 func (scr *Screen) Refresh() {
-    // NOTE this is kind of garbage. The approach I used in the C version is
-    // judged insecure by go, so I had to adapt. I honestly like the general
-    // idea of this new approach a lot better, as it feels less "magical". At
-    // the same time though, the concrete implementation needes more polish.
-    // I'm pretty sure I've hardcoded little endianess into this thing, and
-    // the meat of the mapping feels clumsy to read and edit.
-    if !scr.refreshFlag {
-        return
-    }
-    scr.refreshFlag = false
-    // Map the conceptual model to the raw pixel bytes
-    for i := 0; i < h*w; i++ {
-        if scr.display[i] && scr.pixels[i] != colorOn.red {
-            // Instantly transition to the "on" color
-            scr.pixels[i] = colorOn.red
-            scr.pixels[i + 1] = colorOn.blue
-            scr.pixels[i + 2] = colorOn.green
-            scr.pixels[i + 3] = colorOn.alpha
-        } else if !scr.display[i] && scr.pixels[i] != colorOff.red {
-            // Progressively fade to the "off" color via lerping
-            currentColor := color{
-                red: scr.pixels[i],
-                blue: scr.pixels[i + 1],
-                green: scr.pixels[i + 2],
-                alpha: scr.pixels[i + 3],
-            }
-            fadeColor := lerpColor(currentColor, colorOff, lerpFactor)
-            scr.pixels[i] = fadeColor.red
-            scr.pixels[i + 1] = fadeColor.blue
-            scr.pixels[i + 2] = fadeColor.green
-            scr.pixels[i + 3] = fadeColor.alpha
-        }
-    }
-	// Do texture locking shananigans to render the thing, I'm not really sure
-	// if this is the best way to do it, but it sure does work
-	pixels, _, err := scr.texture.Lock(nil)
-	if err != nil {
-		log.Panicln("Could not lock the main texture for rendering")
+	if !scr.refreshFlag {
+		return
 	}
-	copy(pixels, scr.pixels[:])
-	scr.texture.Unlock()
-	scr.renderer.Copy(scr.texture, nil, nil)
+	scr.refreshFlag = false
+	// Map the conceptual model to the actual pixel colors
+	for i := 0; i < H*W; i++ {
+		if scr.display[i] && scr.pixels[i] != colorOn {
+			// instantly transition to the "on" color
+			scr.pixels[i] = colorOn
+		} else if !scr.display[i] && scr.pixels[i] != colorOff {
+			// progressively fade to the "off" color
+			scr.pixels[i] = lerpColor(scr.pixels[i], colorOff, lerpFactor)
+		}
+	}
+	// Now draw the actual pixel colors to the screen
+	rect := sdl.Rect{W: scale, H: scale}
+	for y := int32(0); y < H; y++ {
+		for x := int32(0); x < W; x++ {
+			rect.X = x * scale
+			rect.Y = y * scale
+			scr.setDrawColor(scr.pixels[y*W+x])
+			scr.renderer.FillRect(&rect)
+		}
+	}
 	scr.renderer.Present()
+}
+
+// Helper function to use the color structure in the renderer
+func (scr *Screen) setDrawColor(c color) {
+	scr.renderer.SetDrawColor(c.red, c.green, c.blue, c.alpha)
 }
 
 // Linearly interpolate two colors by the given t factor

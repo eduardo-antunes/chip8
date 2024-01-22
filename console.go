@@ -16,30 +16,45 @@
 
 package main
 
-import "github.com/veandco/go-sdl2/sdl"
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
 
+// Representation of the chip8 "console"
 type Console struct {
 	proc   *Processor
 	screen *Screen
 }
 
+// Initializes a new console, connecting the processor to itself
 func NewConsole() *Console {
-	return &Console{
-		proc:   NewProcessor(),
+	con := &Console{
 		screen: NewScreen(),
 	}
+	con.proc = NewProcessor(con)
+	return con
 }
 
+// Close the console
 func (con *Console) Close() {
 	con.screen.Close()
 }
 
-// Pretty stupid skeleton
+// Runs the program currently loaded into memory
 func (con *Console) Run() {
-	quit := 100_000
-	con.screen.RequestRefresh()
-	for quit > 0 {
-		quit--
+	quit := false
+	con.screen.RequestRefresh() // display window from the start
+	for {
+		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+			switch event.(type) {
+			case *sdl.QuitEvent:
+				quit = true
+			}
+		}
+		if quit {
+			break
+		}
+
 		before := sdl.GetPerformanceCounter()
 		for i := 0; i < 12; i++ {
 			con.proc.SingleStep()

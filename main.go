@@ -24,18 +24,18 @@ import (
 )
 
 func main() {
-    err := sdl.Init(sdl.INIT_EVERYTHING)
-    if err != nil {
-        log.Panicln("Could not setup SDL2. Is it installed?")
-    }
-    defer sdl.Quit()
+	err := sdl.Init(sdl.INIT_EVERYTHING)
+	if err != nil {
+		log.Panicln("Could not setup SDL2. Is it installed?")
+	}
+	defer sdl.Quit()
 
-    prog, err := os.ReadFile(os.Args[1])
-    if err != nil {
-        log.Panicf("Could not read file %s\n", os.Args[1])
-    }
-    chip8 := NewConsole()
-    defer chip8.Close()
-    chip8.proc.LoadProg(prog)
-    chip8.Run()
+	prog, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		log.Panicf("Could not read file %s\n", os.Args[1])
+	}
+	chip8 := NewConsole()
+	defer chip8.Close()
+	chip8.proc.LoadProg(prog)
+	chip8.Run()
 }
