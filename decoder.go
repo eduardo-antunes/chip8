@@ -20,22 +20,24 @@ import "log"
 
 // The worst substitute for an enumeration type you have ever seen in your
 // life. I like golang, but boy is this the dumbest thing of all time.
-// Anyways, this represents all the distinct operations possible in chip8.
+// Anyways, this represents all the distinct operations possible in CHIP-8.
 
 type operation uint8
 
-// TODO add missing instructions (key-related)
 const (
-	ERROR = iota
-	CALL  // calls subroutine at address
-	RTS   // returns from subroutine
-	JUMP  // unconditional jump to address
-	JUMP0 // unconditional jump to address + V0
+	UNKNOWN = iota
+	CALL    // calls subroutine at address
+	RTS     // returns from subroutine
+	JUMP    // unconditional jump to address
+	JUMP0   // unconditional jump to address + V0
 
 	SKE   // skips if VX equals argument
 	SKNE  // skips if VX doesn't equal argument
 	SKRE  // skips if VX equals VY
 	SKRNE // skips if VX doesn't equal VY
+	SKPR  // skips if key corresponding to VX is pressed
+	SKNPR // skips if key corresponding to VX is not pressed
+	KEYD  // waits for a key press, then store it in VX
 
 	LOAD  // loads argument into VX
 	LOADI // loads address into index
@@ -85,7 +87,7 @@ func Decode(msb, lsb uint8) Instruction {
 }
 
 func decodeOperation(opcode uint8, fullcode uint16) operation {
-	// Auxiliary table used to simplify decoding
+	// Main table used to simplify decoding
 	var decodeTable = [...]operation{
 		0x1: JUMP,
 		0x2: CALL,
@@ -97,6 +99,7 @@ func decodeOperation(opcode uint8, fullcode uint16) operation {
 		0x9: SKRNE,
 		0xA: LOADI,
 		0xB: JUMP0,
+		0xC: RAND,
 		0xD: DRAW,
 	}
 	// Specific table for logical and arithmetic instructions (opcode: 0x8)
@@ -111,13 +114,18 @@ func decodeOperation(opcode uint8, fullcode uint16) operation {
 		0x7: RSUB,
 		0xE: SHL,
 	}
+	// Specific table for two key-related instructions (opcode: 0xE)
+	var keypadDecodeTable = [...]operation{
+		0x9E: SKPR,
+		0xA1: SKNPR,
+	}
 	// Specific table for misc instructions (opcode: 0xF)
 	var miscDecodeTable = [...]operation{
 		0x07: MOVED,
+		0x0A: KEYD,
 		0x15: LOADD,
 		0x18: LOADS,
 		0x1E: ADDI,
-
 		0x29: LDCHR,
 		0x33: BCD,
 		0x55: STORE,
@@ -132,6 +140,9 @@ func decodeOperation(opcode uint8, fullcode uint16) operation {
 	if opcode == 0x8 {
 		n := fullcode & 0xF
 		return aritDecodeTable[n]
+	} else if opcode == 0xE {
+		halfcode := fullcode & 0xFF
+		return keypadDecodeTable[halfcode]
 	} else if opcode == 0xF {
 		halfcode := fullcode & 0xFF
 		return miscDecodeTable[halfcode]

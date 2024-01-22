@@ -1,10 +1,37 @@
-# Yet another Chip-8 emulator
+# Yet another CHIP-8 emulator
 
-Chip-8 is a low-level, interpreted programming language made in the mid-1970s by Joseph Weisbecker. Its original purpose was to facilitate game development for the COSMAC VIP and Telmac 1800 computers. Today, despite both of these having long become obsolete, Chip-8 remains relevant for its simplicity and low-level nature. Building an emulator (or, more accuratelly, an interpreter) capable of running it is considered to be kind of the "Hello, World" of emulation. You can find out more about this language [here](https://en.wikipedia.org/wiki/CHIP-8).
+CHIP-8 is a low-level, interpreted programming language made in the mid-1970s by Joseph Weisbecker. Its original purpose was to facilitate game development for
+the COSMAC VIP and Telmac 1800 computers. Today, despite both of these having long become obsolete, CHIP-8 remains relevant for its simplicity and low-level
+nature. Building an emulator (or, more accuratelly, an interpreter) capable of running it is considered to be kind of the "Hello, World" of emulation. You can
+find out more about this language [here](https://en.wikipedia.org/wiki/CHIP-8).
+
+This particular emulator is written in Go (previously C++), using SDL2 and its Go bindings for graphics, sound and user input.
+
+# Instalation
+
+To compile this emulator, you will need the standard Go compiler (1.21) and SDL2 (including development files). Once those are properly installed, downloading
+and compiling the emulator is pretty simple.
+
+```sh
+# To install go and SDL2 on Fedora:
+$ sudo dnf install SDL2-devel
+# To install it on Ubuntu:
+$ sudo apt-get install libsdl2-dev
+# Compiling the emulator
+$ git clone https://github.com/eduardo-antunes/chip8
+$ cd chip8
+$ go mod tidy && go build
+```
 
 # Thanks
 
-Without Tobias V. Langhoff's [comprehensive guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) on Chip-8 emulation, this emulator would not have left the paper. Check it out if you're interested in this sort of thing, it is really good. I also made sporadic use of Cowgod's [technical reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM), which is also very complete and well-written.
+During the development, I made use of some resources without which this thing would not have left the paper. In particular, I'd like to highlight:
+
+* Tobias V. Langhoff's [comprehensive guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) on CHIP-8 emulation
+* Cowgod's [technical reference](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM)
+* This [blog post](https://blog.tigris.fr/2020/05/13/writing-an-emulator-sound-is-complicated/) on audio generation in SDL2
+
+My sincere thanks to all the authors.
 
 # License
 

@@ -22,11 +22,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+// Graphics-related constants
 const (
 	W          = 64  // screen width
 	H          = 32  // screen height
 	scale      = 10  // scale factor for each pixel
-	lerpFactor = 0.5 // lerp fading factor
+	lerpFactor = 0.6 // lerp fading factor
 )
 
 // RGBA color representation
@@ -34,7 +35,7 @@ type color struct {
 	red, green, blue, alpha byte
 }
 
-// Representation of the chip8 screen, with the SDL objects needed to render it
+// Representation of the CHIP-8 screen, with the SDL objects needed to render it
 type Screen struct {
 	window      *sdl.Window
 	renderer    *sdl.Renderer
@@ -60,7 +61,7 @@ var colorOff = color{
 // Initializes a new screen
 func NewScreen() *Screen {
 	// Create window though SDL
-	win, err := sdl.CreateWindow("Chip8 emulator", sdl.WINDOWPOS_UNDEFINED,
+	win, err := sdl.CreateWindow("CHIP-8 emulator", sdl.WINDOWPOS_UNDEFINED,
 		sdl.WINDOWPOS_UNDEFINED, W*scale, H*scale, sdl.WINDOW_SHOWN)
 	if err != nil {
 		log.Panicln("Could not create the graphical window")

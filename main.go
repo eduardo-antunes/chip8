@@ -34,8 +34,8 @@ func main() {
 	if err != nil {
 		log.Panicf("Could not read file %s\n", os.Args[1])
 	}
-	chip8 := NewConsole()
-	defer chip8.Close()
-	chip8.proc.LoadProg(prog)
-	chip8.Run()
+	octo := NewConsole()
+	defer octo.Close()
+	octo.proc.LoadProg(prog)
+	octo.Run()
 }

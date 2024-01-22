@@ -16,18 +16,18 @@
 
 package main
 
-import (
-	"github.com/veandco/go-sdl2/sdl"
-)
+import "github.com/veandco/go-sdl2/sdl"
 
-// Representation of the chip8 "console"
+// Representation of the CHIP-8 "console"
 type Console struct {
 	proc   *Processor
 	screen *Screen
+	keys   [16]bool // states for every key, true for pressed
 }
 
 // Initializes a new console, connecting the processor to itself
 func NewConsole() *Console {
+	OpenAudio()
 	con := &Console{
 		screen: NewScreen(),
 	}
@@ -38,30 +38,96 @@ func NewConsole() *Console {
 // Close the console
 func (con *Console) Close() {
 	con.screen.Close()
+	sdl.CloseAudio()
 }
 
 // Runs the program currently loaded into memory
 func (con *Console) Run() {
-	quit := false
 	con.screen.RequestRefresh() // display window from the start
+outer:
 	for {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-			switch event.(type) {
+			switch ev := event.(type) {
 			case *sdl.QuitEvent:
-				quit = true
+				break outer
+			case *sdl.KeyboardEvent:
+				con.handleKeypad(ev)
 			}
 		}
-		if quit {
-			break
-		}
-
-		before := sdl.GetPerformanceCounter()
-		for i := 0; i < 12; i++ {
+		start := sdl.GetPerformanceCounter()
+		for i := 0; i < 10; i++ {
 			con.proc.SingleStep()
 		}
-		after := sdl.GetPerformanceCounter()
-		elapsed := (after - before) * 1000 / sdl.GetPerformanceFrequency()
-		sdl.Delay(uint32(elapsed))
+		con.proc.UpdateTimers()
 		con.screen.Refresh()
+		end := sdl.GetPerformanceCounter()
+		sleep(start, end)
+	}
+}
+
+// Handles keypad input
+func (con *Console) handleKeypad(event *sdl.KeyboardEvent) {
+	value := (event.State == sdl.PRESSED)
+	switch event.Keysym.Scancode {
+	case sdl.SCANCODE_1:
+		con.keys[0x1] = value
+	case sdl.SCANCODE_2:
+		con.keys[0x2] = value
+	case sdl.SCANCODE_3:
+		con.keys[0x3] = value
+	case sdl.SCANCODE_4:
+		con.keys[0xC] = value
+	case sdl.SCANCODE_Q:
+		con.keys[0x4] = value
+	case sdl.SCANCODE_W:
+		con.keys[0x5] = value
+	case sdl.SCANCODE_E:
+		con.keys[0x6] = value
+	case sdl.SCANCODE_R:
+		con.keys[0xD] = value
+	case sdl.SCANCODE_A:
+		con.keys[0x7] = value
+	case sdl.SCANCODE_S:
+		con.keys[0x8] = value
+	case sdl.SCANCODE_D:
+		con.keys[0x9] = value
+	case sdl.SCANCODE_F:
+		con.keys[0xe] = value
+	case sdl.SCANCODE_Z:
+		con.keys[0xA] = value
+	case sdl.SCANCODE_X:
+		con.keys[0x0] = value
+	case sdl.SCANCODE_C:
+		con.keys[0xB] = value
+	case sdl.SCANCODE_V:
+		con.keys[0xF] = value
+	}
+}
+
+// Checks if a particular key is pressed, used in skip if (not) pressed
+func (con *Console) IsPressed(k uint8) bool {
+	if k >= 16 {
+		return false
+	}
+	return con.keys[k]
+}
+
+// If a key is pressed, return it, used in get key instruction
+func (con *Console) GetPressed() (uint8, bool) {
+	for k := uint8(0); k < 16; k++ {
+		if con.keys[k] {
+			return k, true
+		}
+	}
+	return 0, false
+}
+
+// Sleep for the correct amout of time to guarantee 60FPS
+func sleep(start, end uint64) {
+	freq := float64(sdl.GetPerformanceFrequency())
+	elapsed := float64(end-start) / freq
+	if elapsed < 16.667 {
+		sleepTime := uint32(16.667 - elapsed)
+		sdl.Delay(sleepTime)
 	}
 }

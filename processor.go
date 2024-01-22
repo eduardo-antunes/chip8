@@ -19,8 +19,11 @@ package main
 import (
 	"log"
 	"math/rand"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
+// Hardcoded important addresses
 const (
 	font_start = 0x0050
 	prog_start = 0x0200
@@ -82,7 +85,7 @@ func (proc *Processor) LoadProg(prog []uint8) {
 // Single step through the code
 func (proc *Processor) SingleStep() {
 	// Fetch the 16 bits of an instruction (big endian) and advance the PC
-	msb := proc.ram[proc.pc]
+	msb := proc.ram[proc.pc+0]
 	lsb := proc.ram[proc.pc+1]
 	proc.pc += 2
 	// Decode and execute the instruction
@@ -123,6 +126,24 @@ func (proc *Processor) SingleStep() {
 		// Skips if VX doesn't equal VY
 		if proc.v[inst.x] != proc.v[inst.y] {
 			proc.pc += 2
+		}
+	case SKPR:
+		// Skips if key corresponding to VX is pressed
+		if proc.con.IsPressed(proc.v[inst.x] & 0xF) {
+			proc.pc += 2
+		}
+	case SKNPR:
+		// Skips if key corresponding to VX is not pressed
+		if !proc.con.IsPressed(proc.v[inst.x] & 0xF) {
+			proc.pc += 2
+		}
+	case KEYD:
+		// Waits for a key press, then stores it in VX
+		key, isPressed := proc.con.GetPressed()
+		if !isPressed {
+			proc.pc -= 2
+		} else {
+			proc.v[inst.x] = key
 		}
 
 	case LOAD:
@@ -233,17 +254,17 @@ func (proc *Processor) SingleStep() {
 
 	case BCD:
 		// Converts VX to BCD and stores it in RAM, where the index points
-		proc.ram[proc.index+2] = (proc.v[inst.x] / 1) % 10   // 1s
-		proc.ram[proc.index+1] = (proc.v[inst.x] / 10) % 10  // 10s
-		proc.ram[proc.index+0] = (proc.v[inst.x] / 100) % 10 // 100s
+		proc.ram[proc.index+2] = proc.v[inst.x] % 10        // 1s
+		proc.ram[proc.index+1] = (proc.v[inst.x] / 10) % 10 // 10s
+		proc.ram[proc.index+0] = proc.v[inst.x] / 100       // 100s
 	case STORE:
 		// Stores registers into memory
-		for i := uint16(0); i < uint16(inst.x); i++ {
+		for i := uint16(0); i <= uint16(inst.x); i++ {
 			proc.ram[proc.index+i] = proc.v[i]
 		}
 	case READ:
 		// Reads registers from memory
-		for i := uint16(0); i < uint16(inst.x); i++ {
+		for i := uint16(0); i <= uint16(inst.x); i++ {
 			proc.v[i] = proc.ram[proc.index+i]
 		}
 	default:
@@ -257,6 +278,22 @@ func (proc *Processor) setFlag(state bool) {
 		proc.v[0xF] = 1
 	} else {
 		proc.v[0xF] = 0
+	}
+}
+
+// Update the hardware timers (should be called at 60Hz)
+func (proc *Processor) UpdateTimers() {
+	// The delay timer simply descreases while it's above zero
+	if proc.delay > 0 {
+		proc.delay--
+	}
+	// The sound timer does the same, but triggers a beeping sound to be made
+	// while it has a positive value
+	if proc.sound > 0 {
+		proc.sound--
+		sdl.PauseAudio(false)
+	} else {
+		sdl.PauseAudio(true)
 	}
 }
 
