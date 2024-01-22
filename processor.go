@@ -16,8 +16,15 @@
 
 package main
 
-const font_start = 0x0050
-const prog_start = 0x0200
+import (
+	"log"
+	"math/rand"
+)
+
+const (
+	font_start = 0x0050
+	prog_start = 0x0200
+)
 
 type Processor struct {
 	con          *Console    // reference to the outside world
@@ -81,18 +88,108 @@ func (proc *Processor) SingleStep() {
 	// Decode and execute the instruction
 	inst := Decode(msb, lsb)
 	switch inst.op {
+	case CALL:
+		// Calls subroutine at address
+		proc.stack[proc.stack_count] = proc.pc
+		proc.stack_count++
+		proc.pc = inst.addr
+	case RTS:
+		// Returns from subroutine
+		proc.stack_count--
+		proc.pc = proc.stack[proc.stack_count]
 	case JUMP:
 		// Jumps to the given address
 		proc.pc = inst.addr
+	case JUMP0:
+		// Jumps to the given address + V0
+		proc.pc = inst.addr + uint16(proc.v[0])
+
+	case SKE:
+		// Skips if VX equals argument
+		if proc.v[inst.x] == inst.arg {
+			proc.pc += 2
+		}
+	case SKNE:
+		// Skips if VX doesn't equal argument
+		if proc.v[inst.x] != inst.arg {
+			proc.pc += 2
+		}
+	case SKRE:
+		// Skips if VX equals VY
+		if proc.v[inst.x] == proc.v[inst.y] {
+			proc.pc += 2
+		}
+	case SKRNE:
+		// Skips if VX doesn't equal VY
+		if proc.v[inst.x] != proc.v[inst.y] {
+			proc.pc += 2
+		}
+
 	case LOAD:
 		// Loads the given value into VX
 		proc.v[inst.x] = inst.arg
-	case ADD:
-		// Adds the given value to VX (no flags set)
-		proc.v[inst.x] += inst.arg
 	case LOADI:
 		// Loads the given address into the index register
 		proc.index = inst.addr
+	case LOADD:
+		// Loads the value of VX to delay timer
+		proc.delay = proc.v[inst.x]
+	case LOADS:
+		// Loads the value of VX to sound timer
+		proc.sound = proc.v[inst.x]
+	case LDCHR:
+		// Points index to the character sprite of VX
+		chr := proc.v[inst.x] & 0xF
+		proc.index = font_start + uint16(chr)*5
+	case MOVE:
+		// Copies VY to VX
+		proc.v[inst.x] = proc.v[inst.y]
+	case MOVED:
+		// Copies delay timer to VX
+		proc.v[inst.x] = proc.delay
+	case OR:
+		// VX |= VY
+		proc.v[inst.x] |= proc.v[inst.y]
+	case AND:
+		// VX &= VY
+		proc.v[inst.x] &= proc.v[inst.y]
+	case XOR:
+		// VX ^= VY
+		proc.v[inst.x] ^= proc.v[inst.y]
+
+	case ADD:
+		// Adds the given value to VX (no flags set)
+		proc.v[inst.x] += inst.arg
+	case ADDR:
+		// Adds VY to VX, setting flag on carry
+		proc.setFlag(proc.v[inst.y] > 255-proc.v[inst.x])
+		proc.v[inst.x] += proc.v[inst.y]
+	case ADDI:
+		// Adds VX to the index register
+		proc.index += uint16(proc.v[inst.x])
+	case SUB:
+		// VX -= VY, setting flag on !borrow
+		proc.setFlag(proc.v[inst.x] > proc.v[inst.y])
+		proc.v[inst.x] -= proc.v[inst.y]
+	case RSUB:
+		// VX = VY - VX, setting flag on !borrow
+		proc.setFlag(proc.v[inst.y] > proc.v[inst.x])
+		proc.v[inst.x] = proc.v[inst.y] - proc.v[inst.x]
+	case SHR:
+		// VX = VY >> 1
+		proc.setFlag(proc.v[inst.y]&0x01 > 0)
+		proc.v[inst.x] = proc.v[inst.y] >> 1
+	case SHL:
+		// VX = VY >> 1
+		proc.setFlag(proc.v[inst.y]&0x80 > 0)
+		proc.v[inst.x] = proc.v[inst.y] << 1
+	case RAND:
+		// Puts a random number, ands it with the argument, and sets VX to it
+		proc.v[inst.x] = uint8(rand.Int() & int(inst.arg))
+
+	case CLS:
+		// Clears the screen
+		proc.con.screen.Clear()
 	case DRAW:
 		// Probably the most complicated instruction, it draws a sprite from
 		// the location pointed to by the index register
@@ -100,7 +197,6 @@ func (proc *Processor) SingleStep() {
 		x := uint32(proc.v[inst.x]) & (W - 1)
 		y := uint32(proc.v[inst.y]) & (H - 1)
 		prevx := x
-
 		// Sprites are stored in memory as a series of bytes, where each
 		// byte represents the operations that must be done to draw a row
 		// of the sprite to the display. Each operation is represented by
@@ -121,17 +217,37 @@ func (proc *Processor) SingleStep() {
 					}
 				}
 				x++
+				// don't wrap around the edges of the screen
 				if x >= W {
-					break // don't wrap around the edges of the screen
+					break
 				}
 			}
 			y++
+			// don't wrap around the edges of the screen
 			if y >= H {
-				break // don't wrap around the edges of the screen
+				break
 			}
 			x = prevx // reset the x position
 		}
 		proc.con.screen.RequestRefresh() // done with the graphics
+
+	case BCD:
+		// Converts VX to BCD and stores it in RAM, where the index points
+		proc.ram[proc.index+2] = (proc.v[inst.x] / 1) % 10   // 1s
+		proc.ram[proc.index+1] = (proc.v[inst.x] / 10) % 10  // 10s
+		proc.ram[proc.index+0] = (proc.v[inst.x] / 100) % 10 // 100s
+	case STORE:
+		// Stores registers into memory
+		for i := uint16(0); i < uint16(inst.x); i++ {
+			proc.ram[proc.index+i] = proc.v[i]
+		}
+	case READ:
+		// Reads registers from memory
+		for i := uint16(0); i < uint16(inst.x); i++ {
+			proc.v[i] = proc.ram[proc.index+i]
+		}
+	default:
+		log.Panicf("Could not execute 0x%02X%02X\n", msb, lsb)
 	}
 }
 
