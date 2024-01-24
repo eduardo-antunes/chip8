@@ -197,13 +197,13 @@ func (proc *Processor) SingleStep() {
 		proc.setFlag(proc.v[inst.y] > proc.v[inst.x])
 		proc.v[inst.x] = proc.v[inst.y] - proc.v[inst.x]
 	case SHR:
-		// VX = VY >> 1
-		proc.setFlag(proc.v[inst.y]&0x01 > 0)
-		proc.v[inst.x] = proc.v[inst.y] >> 1
+		// Shifts VX to the right
+		proc.setFlag(proc.v[inst.x]&0x01 > 0)
+		proc.v[inst.x] >>= 1
 	case SHL:
-		// VX = VY >> 1
-		proc.setFlag(proc.v[inst.y]&0x80 > 0)
-		proc.v[inst.x] = proc.v[inst.y] << 1
+		// Shifts VX to the left
+		proc.setFlag(proc.v[inst.x]&0x80 > 0)
+		proc.v[inst.x] <<= 1
 	case RAND:
 		// Puts a random number, ands it with the argument, and sets VX to it
 		proc.v[inst.x] = uint8(rand.Int() & int(inst.arg))

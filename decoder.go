@@ -55,8 +55,8 @@ const (
 	ADDI // adds VX to index
 	SUB  // VX -= VY, clearing flag on borrow
 	RSUB // VX = VY - VX, clearing flag on borrow
-	SHR  // VX = VY >> 1
-	SHL  // VX = VY << 1
+	SHR  // shifts VX to the right
+	SHL  // shifts VX to the left
 	RAND // puts random number into VX
 
 	CLS  // clears the screen
